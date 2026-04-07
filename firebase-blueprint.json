@@ -1,0 +1,99 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "A user profile in the application.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "The user's unique ID." },
+        "displayName": { "type": "string", "description": "The user's display name." },
+        "photoURL": { "type": "string", "description": "The user's profile picture URL." },
+        "friendCode": { "type": "string", "description": "A unique 6-character code for adding friends." },
+        "level": { "type": "number", "description": "The user's current level." },
+        "xp": { "type": "number", "description": "The user's current XP." }
+      },
+      "required": ["uid", "displayName", "friendCode", "level", "xp"]
+    },
+    "Friend": {
+      "title": "Friend",
+      "description": "A friendship relationship.",
+      "type": "object",
+      "properties": {
+        "friendUid": { "type": "string", "description": "The UID of the friend." },
+        "status": { "type": "string", "enum": ["pending", "accepted"], "description": "The status of the friendship." },
+        "timestamp": { "type": "timestamp", "description": "When the friendship was created or updated." }
+      },
+      "required": ["friendUid", "status", "timestamp"]
+    },
+    "Activity": {
+      "title": "Activity",
+      "description": "An activity feed item.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "The UID of the user who performed the activity." },
+        "type": { "type": "string", "enum": ["level_up", "challenge", "best_time", "achievement"], "description": "The type of activity." },
+        "game": { "type": "string", "description": "The game associated with the activity (optional)." },
+        "details": { "type": "string", "description": "JSON stringified details about the activity." },
+        "timestamp": { "type": "timestamp", "description": "When the activity occurred." }
+      },
+      "required": ["userId", "type", "timestamp"]
+    },
+    "BestTime": {
+      "title": "BestTime",
+      "description": "A user's best time for a specific game and difficulty.",
+      "type": "object",
+      "properties": {
+        "time": { "type": "number", "description": "The time in seconds." },
+        "timestamp": { "type": "timestamp", "description": "When the best time was achieved." }
+      },
+      "required": ["time", "timestamp"]
+    },
+    "Achievement": {
+      "title": "Achievement",
+      "description": "An achievement unlocked by a user.",
+      "type": "object",
+      "properties": {
+        "achievementId": { "type": "string", "description": "The ID of the achievement." },
+        "timestamp": { "type": "timestamp", "description": "When the achievement was unlocked." }
+      },
+      "required": ["achievementId", "timestamp"]
+    },
+    "CustomCardBack": {
+      "title": "CustomCardBack",
+      "description": "A custom card back created by a user.",
+      "type": "object",
+      "properties": {
+        "imageUrl": { "type": "string", "description": "The URL or data URI of the card back image." },
+        "name": { "type": "string", "description": "The name of the card back." },
+        "sharedWith": { "type": "array", "items": { "type": "string" }, "description": "Array of friend UIDs this card back is shared with." }
+      },
+      "required": ["imageUrl", "name"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/User" },
+      "description": "User profiles."
+    },
+    "/users/{userId}/friends/{friendId}": {
+      "schema": { "$ref": "#/entities/Friend" },
+      "description": "A user's friends."
+    },
+    "/users/{userId}/bestTimes/{gameDifficulty}": {
+      "schema": { "$ref": "#/entities/BestTime" },
+      "description": "A user's best times."
+    },
+    "/users/{userId}/achievements/{achievementId}": {
+      "schema": { "$ref": "#/entities/Achievement" },
+      "description": "A user's unlocked achievements."
+    },
+    "/users/{userId}/cardBacks/{cardBackId}": {
+      "schema": { "$ref": "#/entities/CustomCardBack" },
+      "description": "A user's custom card backs."
+    },
+    "/activities/{activityId}": {
+      "schema": { "$ref": "#/entities/Activity" },
+      "description": "Global activity feed."
+    }
+  }
+}

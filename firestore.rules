@@ -1,0 +1,132 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    function hasOnlyAllowedFields(allowedFields) {
+      return request.resource.data.keys().hasOnly(allowedFields);
+    }
+    
+    function hasRequiredFields(requiredFields) {
+      return request.resource.data.keys().hasAll(requiredFields);
+    }
+    
+    // ===============================================================
+    // Domain Validators
+    // ===============================================================
+    function isValidUser(data) {
+      return hasOnlyAllowedFields(['uid', 'displayName', 'photoURL', 'friendCode', 'level', 'xp']) &&
+             hasRequiredFields(['uid', 'displayName', 'friendCode', 'level', 'xp']) &&
+             data.uid is string &&
+             data.displayName is string && data.displayName.size() > 0 && data.displayName.size() < 50 &&
+             (!('photoURL' in data) || (data.photoURL is string && data.photoURL.size() < 500)) &&
+             data.friendCode is string && data.friendCode.size() == 6 &&
+             data.level is number && data.level >= 1 &&
+             data.xp is number && data.xp >= 0;
+    }
+    
+    function isValidFriend(data) {
+      return hasOnlyAllowedFields(['friendUid', 'status', 'timestamp']) &&
+             hasRequiredFields(['friendUid', 'status', 'timestamp']) &&
+             data.friendUid is string &&
+             data.status in ['pending', 'accepted'] &&
+             data.timestamp is timestamp;
+    }
+    
+    function isValidActivity(data) {
+      return hasOnlyAllowedFields(['userId', 'type', 'game', 'details', 'timestamp']) &&
+             hasRequiredFields(['userId', 'type', 'timestamp']) &&
+             data.userId is string &&
+             data.type in ['level_up', 'challenge', 'best_time', 'achievement'] &&
+             (!('game' in data) || (data.game is string && data.game.size() < 50)) &&
+             (!('details' in data) || (data.details is string && data.details.size() < 1000)) &&
+             data.timestamp is timestamp;
+    }
+    
+    function isValidBestTime(data) {
+      return hasOnlyAllowedFields(['time', 'timestamp']) &&
+             hasRequiredFields(['time', 'timestamp']) &&
+             data.time is number && data.time > 0 &&
+             data.timestamp is timestamp;
+    }
+    
+    function isValidAchievement(data) {
+      return hasOnlyAllowedFields(['achievementId', 'timestamp']) &&
+             hasRequiredFields(['achievementId', 'timestamp']) &&
+             data.achievementId is string && data.achievementId.size() < 50 &&
+             data.timestamp is timestamp;
+    }
+    
+    function isValidCustomCardBack(data) {
+      return hasOnlyAllowedFields(['imageUrl', 'name', 'sharedWith']) &&
+             hasRequiredFields(['imageUrl', 'name']) &&
+             data.imageUrl is string && data.imageUrl.size() < 1000000 && // allow data URIs but limit size
+             data.name is string && data.name.size() > 0 && data.name.size() < 50 &&
+             (!('sharedWith' in data) || (data.sharedWith is list && data.sharedWith.size() < 100));
+    }
+    
+    // ===============================================================
+    // Rules
+    // ===============================================================
+    
+    match /users/{userId} {
+      // Anyone authenticated can read user profiles (needed for friend search and leaderboards)
+      allow read: if isAuthenticated();
+      // Only owner can create/update their profile
+      allow create: if isOwner(userId) && isValidUser(request.resource.data) && request.resource.data.uid == userId;
+      allow update: if isOwner(userId) && isValidUser(request.resource.data) && request.resource.data.uid == userId && request.resource.data.friendCode == resource.data.friendCode;
+      
+      match /friends/{friendId} {
+        // Owner can read their friends list.
+        // Other users can read if they are the friend (for checking status)
+        allow read: if isOwner(userId) || (isAuthenticated() && request.auth.uid == friendId);
+        // Owner can add friends. The friend can also update the status to 'accepted'
+        allow create: if isOwner(userId) && isValidFriend(request.resource.data) && request.resource.data.friendUid == friendId;
+        allow update: if (isOwner(userId) || (isAuthenticated() && request.auth.uid == friendId)) && isValidFriend(request.resource.data) && request.resource.data.friendUid == resource.data.friendUid;
+        allow delete: if isOwner(userId) || (isAuthenticated() && request.auth.uid == friendId);
+      }
+      
+      match /bestTimes/{gameDifficulty} {
+        // Anyone can read best times for leaderboards
+        allow read: if isAuthenticated();
+        allow create, update: if isOwner(userId) && isValidBestTime(request.resource.data);
+      }
+      
+      match /achievements/{achievementId} {
+        // Anyone can read achievements for profiles
+        allow read: if isAuthenticated();
+        allow create, update: if isOwner(userId) && isValidAchievement(request.resource.data) && request.resource.data.achievementId == achievementId;
+      }
+      
+      match /cardBacks/{cardBackId} {
+        // Owner can read. Friends can read if shared with them.
+        allow read: if isOwner(userId) || (isAuthenticated() && request.auth.uid in resource.data.sharedWith);
+        allow create, update: if isOwner(userId) && isValidCustomCardBack(request.resource.data);
+        allow delete: if isOwner(userId);
+      }
+      
+      match /data/{document=**} {
+        allow read, write: if isOwner(userId);
+      }
+    }
+    
+    match /activities/{activityId} {
+      // Anyone can read activities for the feed
+      allow read: if isAuthenticated();
+      // Users can only create activities for themselves
+      allow create: if isAuthenticated() && isValidActivity(request.resource.data) && request.resource.data.userId == request.auth.uid;
+      // Activities shouldn't be updated or deleted generally, but maybe owner can delete
+      allow delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
+    }
+  }
+}
