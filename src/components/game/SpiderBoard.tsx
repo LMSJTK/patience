@@ -4,7 +4,15 @@ import { cn } from '../../lib/utils';
 import { isValidSpiderSequence } from '../../lib/solitaire/spider';
 import { SpiderLocation, useSpiderStore } from '../../store/useSpiderStore';
 import PlayingCard from './PlayingCard';
-import { CardTable, DraggableCard, DroppableArea, Ladder, WinScreen, useTableMetrics } from './table';
+import {
+  CardTable,
+  DraggableCard,
+  DroppableArea,
+  Ladder,
+  WinScreen,
+  useDealSeed,
+  useTableMetrics,
+} from './table';
 
 type SpiderTarget = { type: 'tableau'; index: number };
 
@@ -31,9 +39,11 @@ export default function SpiderBoard() {
   const [showSettings, setShowSettings] = useState(false);
   const { cardSpacing, cardHeight } = useTableMetrics(SPACING, HEIGHT);
 
+  const dealSeed = useDealSeed();
+
   useEffect(() => {
-    initGame(1, false);
-  }, [initGame]);
+    initGame(1, false, dealSeed);
+  }, [initGame, dealSeed]);
 
   if (isWon) {
     return <WinScreen xp={100 * suitCount} onPlayAgain={() => initGame(suitCount, isRelaxed)} />;

@@ -30,7 +30,7 @@ export default function GamePlay() {
   const [isPlaying, setIsPlaying] = useState(false);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
-  const [gameState, setGameState] = useState({ isWon: false, historyLength: 0 });
+  const [gameState, setGameState] = useState({ isWon: false, historyLength: 0, seed: 0 });
 
   useEffect(() => {
     const stores = {
@@ -48,14 +48,16 @@ export default function GamePlay() {
     // Initial state
     setGameState({
       isWon: store.getState().isWon,
-      historyLength: store.getState().history.length
+      historyLength: store.getState().history.length,
+      seed: store.getState().seed,
     });
 
     // Subscribe to changes
     const unsubscribe = store.subscribe((state: any) => {
       setGameState({
         isWon: state.isWon,
-        historyLength: state.history.length
+        historyLength: state.history.length,
+        seed: state.seed,
       });
     });
 
@@ -161,6 +163,10 @@ export default function GamePlay() {
           <h1 className="text-xl font-bold capitalize">{gameId}</h1>
         </div>
         <div className="flex items-center gap-4">
+          {/* The number this deal was shuffled from. Same number, same cards. */}
+          <span className="text-green-300/70 font-mono text-sm hidden sm:inline" title="Deal number">
+            #{gameState.seed}
+          </span>
           <span className="text-green-200">Moves: {gameState.historyLength}</span>
           <span className="text-green-200 font-mono text-lg">Time: {formatTime(time)}</span>
         </div>

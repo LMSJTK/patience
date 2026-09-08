@@ -2,7 +2,15 @@ import { Settings, Undo2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { CardLocation, useKlondikeStore } from '../../store/useKlondikeStore';
 import PlayingCard from './PlayingCard';
-import { CardTable, DraggableCard, DroppableArea, Ladder, WinScreen, useTableMetrics } from './table';
+import {
+  CardTable,
+  DraggableCard,
+  DroppableArea,
+  Ladder,
+  WinScreen,
+  useDealSeed,
+  useTableMetrics,
+} from './table';
 
 type KlondikeTarget = { type: 'tableau' | 'foundation'; index: number };
 
@@ -23,9 +31,11 @@ export default function KlondikeBoard() {
   const [showSettings, setShowSettings] = useState(false);
   const { cardSpacing, cardHeight } = useTableMetrics(SPACING, HEIGHT);
 
+  const dealSeed = useDealSeed();
+
   useEffect(() => {
-    initGame(1);
-  }, [initGame]);
+    initGame(1, dealSeed);
+  }, [initGame, dealSeed]);
 
   if (isWon) {
     return <WinScreen xp={100} onPlayAgain={() => initGame(useKlondikeStore.getState().drawCount)} />;

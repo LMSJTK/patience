@@ -11,6 +11,7 @@ export { DraggableCard } from './DraggableCard';
 export type { DragPayload, DraggableCardProps } from './DraggableCard';
 export { DroppableArea } from './DroppableArea';
 export type { DroppableAreaProps } from './DroppableArea';
+export { useDealSeed } from './useDealSeed';
 export { useTableMetrics } from './useTableMetrics';
 export type { Ladder, TableMetrics } from './useTableMetrics';
 export { WinScreen } from './WinScreen';

@@ -4,7 +4,15 @@ import { cn } from '../../lib/utils';
 import { getMaxMoveCount, isValidFortyThievesSequence } from '../../lib/solitaire/fortythieves';
 import { FortyThievesLocation, useFortyThievesStore } from '../../store/useFortyThievesStore';
 import PlayingCard from './PlayingCard';
-import { CardTable, DraggableCard, DroppableArea, Ladder, WinScreen, useTableMetrics } from './table';
+import {
+  CardTable,
+  DraggableCard,
+  DroppableArea,
+  Ladder,
+  WinScreen,
+  useDealSeed,
+  useTableMetrics,
+} from './table';
 
 type FortyThievesTarget = { type: 'tableau' | 'foundation'; index: number };
 
@@ -31,9 +39,11 @@ export default function FortyThievesBoard() {
   const [showSettings, setShowSettings] = useState(false);
   const { cardSpacing, cardHeight } = useTableMetrics(SPACING, HEIGHT);
 
+  const dealSeed = useDealSeed();
+
   useEffect(() => {
-    initGame(false);
-  }, [initGame]);
+    initGame(false, dealSeed);
+  }, [initGame, dealSeed]);
 
   // The destination is unknown while a card is in the air, so allow the most
   // permissive limit here: the one for moving onto an occupied column.

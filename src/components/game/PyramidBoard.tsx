@@ -4,7 +4,7 @@ import PlayingCard from './PlayingCard';
 import { cn } from '../../lib/utils';
 import { Undo2, RefreshCw } from 'lucide-react';
 import { getRowCol, isCardExposed } from '../../lib/solitaire/pyramid';
-import { WinScreen } from './table';
+import { WinScreen, useDealSeed } from './table';
 
 const CARD_WIDTH = 80;
 const CARD_HEIGHT = 112;
@@ -17,9 +17,11 @@ export default function PyramidBoard() {
     initGame, drawCard, handleCardClick, undo, history
   } = usePyramidStore();
 
+  const dealSeed = useDealSeed();
+
   useEffect(() => {
-    initGame();
-  }, [initGame]);
+    initGame(dealSeed);
+  }, [initGame, dealSeed]);
 
   if (isWon) {
     // initGame takes an optional seed, so it must not be used as a click

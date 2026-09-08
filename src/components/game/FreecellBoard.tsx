@@ -3,7 +3,15 @@ import { useEffect } from 'react';
 import { isValidSequence } from '../../lib/solitaire/freecell';
 import { FreecellLocation, useFreecellStore } from '../../store/useFreecellStore';
 import PlayingCard from './PlayingCard';
-import { CardTable, DraggableCard, DroppableArea, Ladder, WinScreen, useTableMetrics } from './table';
+import {
+  CardTable,
+  DraggableCard,
+  DroppableArea,
+  Ladder,
+  WinScreen,
+  useDealSeed,
+  useTableMetrics,
+} from './table';
 
 type FreecellTarget = { type: 'tableau' | 'foundation' | 'freecell'; index: number };
 
@@ -17,9 +25,11 @@ export default function FreecellBoard() {
 
   const { cardSpacing, cardHeight } = useTableMetrics(SPACING, HEIGHT);
 
+  const dealSeed = useDealSeed();
+
   useEffect(() => {
-    initGame();
-  }, [initGame]);
+    initGame(dealSeed);
+  }, [initGame, dealSeed]);
 
   if (isWon) {
     return <WinScreen xp={100} onPlayAgain={() => initGame()} />;

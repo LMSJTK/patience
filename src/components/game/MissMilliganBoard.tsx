@@ -4,7 +4,15 @@ import { cn } from '../../lib/utils';
 import { isValidMissMilliganSequence } from '../../lib/solitaire/missmilligan';
 import { MissMilliganLocation, useMissMilliganStore } from '../../store/useMissMilliganStore';
 import PlayingCard from './PlayingCard';
-import { CardTable, DraggableCard, DroppableArea, Ladder, WinScreen, useTableMetrics } from './table';
+import {
+  CardTable,
+  DraggableCard,
+  DroppableArea,
+  Ladder,
+  WinScreen,
+  useDealSeed,
+  useTableMetrics,
+} from './table';
 
 type MissMilliganTarget = { type: 'tableau' | 'foundation' | 'pocket'; index?: number };
 
@@ -31,9 +39,11 @@ export default function MissMilliganBoard() {
   const [showSettings, setShowSettings] = useState(false);
   const { cardSpacing, cardHeight } = useTableMetrics(SPACING, HEIGHT);
 
+  const dealSeed = useDealSeed();
+
   useEffect(() => {
-    initGame(false);
-  }, [initGame]);
+    initGame(false, dealSeed);
+  }, [initGame, dealSeed]);
 
   if (isWon) {
     return <WinScreen xp={250} onPlayAgain={() => initGame(isTabbyCat)} />;
