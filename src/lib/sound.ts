@@ -30,6 +30,8 @@ interface Engine {
 let engine: Engine | null = null;
 let enabled = true;
 let volume = 0.6;
+/** Past this many cards the slides blur together, so stop adding them. */
+const MAX_DEAL_SOUNDS = 24;
 /** When the last deal started, so a repeated one is not stacked on top. */
 let lastDealAt = -1;
 /** Set once the browser has let us start, so callers can show the state. */
@@ -216,19 +218,36 @@ export function playSound(name: SoundName): void {
  * Play one sound per card in quick succession, for dealing a row.
  * The stagger is what makes a deal sound like a deal rather than a thud.
  */
-export function playDealSequence(count: number, stepMs = 55): void {
+/**
+ * How long a hand takes to go out, whatever its size.
+ *
+ * Fixed rather than per-card so that Spider's 54 cards and Klondike's 28 both
+ * finish in the same brisk moment, and so the sound and the animation start
+ * and end together instead of drifting apart.
+ */
+export const DEAL_TOTAL_MS = 850;
+
+/** The gap between one card and the next, for a hand of this size. */
+export function dealStepMs(count: number): number {
+  return count <= 1 ? 0 : DEAL_TOTAL_MS / count;
+}
+
+export function playDealSequence(count: number): void {
   if (!enabled) return;
   const e = getEngine();
   if (!e || e.ctx.state !== 'running') return;
   // React's StrictMode runs mount effects twice in development, which deals
   // twice. One deal should still sound like one deal.
   const now = e.ctx.currentTime;
-  if (now - lastDealAt < 0.4) return;
+  if (now - lastDealAt < DEAL_TOTAL_MS / 1000) return;
   lastDealAt = now;
-  const capped = Math.min(count, 24);
+  // Past a couple of dozen the slides blur into noise, so play fewer of them
+  // spread across the same window rather than one per card.
+  const voices = Math.min(count, MAX_DEAL_SOUNDS);
+  const step = voices <= 1 ? 0 : DEAL_TOTAL_MS / voices;
   try {
-    for (let i = 0; i < capped; i++) {
-      VOICES.deal(e, e.ctx.currentTime + (i * stepMs) / 1000);
+    for (let i = 0; i < voices; i++) {
+      VOICES.deal(e, e.ctx.currentTime + (i * step) / 1000);
     }
   } catch {
     // as above

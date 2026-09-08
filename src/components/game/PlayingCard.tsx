@@ -19,6 +19,12 @@ type DivProps = Omit<
 export interface PlayingCardProps extends DivProps {
   card: CardType;
   isSelected?: boolean;
+  /**
+   * Seconds to wait before this card appears, while a hand is being dealt.
+   * Undefined at every other time, so a card that arrives because it was
+   * played does not drop in from nowhere.
+   */
+  dealDelay?: number;
 }
 
 const SuitIcon = ({ suit, className }: { suit: string, className?: string }) => {
@@ -45,18 +51,42 @@ const MOVE_TRANSITION = { type: 'tween', duration: 0.19, ease: [0.2, 0.8, 0.2, 1
 /** Instant for anyone who has asked their system for less motion. */
 const NO_MOTION = { duration: 0 } as const;
 
+/** Where a card comes from when it is dealt: above its place, small and faint. */
+const DEAL_FROM = { opacity: 0, scale: 0.88, y: -26 } as const;
+
+/**
+ * A card at rest.
+ *
+ * Always passed as the animation target, even when nothing is being dealt.
+ * Dropping it while a card is still travelling leaves the card frozen at
+ * whatever size it had reached, which is how a dealt hand ended up with a
+ * dozen permanently shrunken cards.
+ */
+const CARD_AT_REST = { opacity: 1, scale: 1, y: 0 } as const;
+
 const PlayingCard = forwardRef<HTMLDivElement, PlayingCardProps>(
-  ({ card, className, style, isSelected, ...props }, ref) => {
+  ({ card, className, style, isSelected, dealDelay, ...props }, ref) => {
     const { cardBack } = useGameStore();
     const reduceMotion = useReducedMotion();
     const transition = reduceMotion ? NO_MOTION : MOVE_TRANSITION;
+
+    // While a hand is going out, each card waits its turn and then drops in.
+    // The wait matches the card-slide sound exactly, so the two are one event.
+    const dealing = dealDelay !== undefined && !reduceMotion;
+    const motionProps = dealing
+      ? {
+          initial: DEAL_FROM,
+          animate: CARD_AT_REST,
+          transition: { duration: 0.2, ease: MOVE_TRANSITION.ease, delay: dealDelay },
+        }
+      : { animate: CARD_AT_REST, transition };
 
     if (!card.isFaceUp) {
       return (
         <motion.div
           ref={ref}
           layoutId={card.id}
-          transition={transition}
+          {...motionProps}
           className={cn(
             "w-12 h-18 sm:w-16 sm:h-24 md:w-20 md:h-28 lg:w-24 lg:h-36 rounded-lg sm:rounded-xl border-2 shadow-md cursor-pointer overflow-hidden relative",
             cardBack === 'default' ? "bg-gradient-to-br from-indigo-500 to-purple-700 border-white/10" : "border-transparent",
@@ -78,7 +108,7 @@ const PlayingCard = forwardRef<HTMLDivElement, PlayingCardProps>(
       <motion.div
         ref={ref}
         layoutId={card.id}
-        transition={transition}
+        {...motionProps}
         className={cn(
           "w-12 h-18 sm:w-16 sm:h-24 md:w-20 md:h-28 lg:w-24 lg:h-36 rounded-lg sm:rounded-xl border shadow-md bg-white flex flex-col justify-between p-1 sm:p-2 cursor-pointer relative overflow-hidden",
           card.color === 'red' ? 'text-red-600 border-red-200' : card.suit === 'clubs' ? 'text-slate-700 border-slate-200' : 'text-black border-slate-200',

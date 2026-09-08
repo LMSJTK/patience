@@ -41,7 +41,7 @@ export default function SpiderBoard() {
   const { cardSpacing, cardHeight } = useTableMetrics(SPACING, HEIGHT);
 
   const dealSeed = useDealSeed();
-  const onDrop = useGameSounds(useSpiderStore, handleDrop);
+  const { onDrop, dealDelayOf } = useGameSounds(useSpiderStore, handleDrop);
 
   useEffect(() => {
     initGame(1, false, dealSeed);
@@ -168,7 +168,8 @@ export default function SpiderBoard() {
                     location={{ type: 'tableau', index: i, cardIndex: j } as SpiderLocation}
                     cardsToDrag={col.slice(j)}
                     canDrag={isValidSpiderSequence(col.slice(j))}
-                    style={{ top: j * cardSpacing, zIndex: j }}
+                    dealDelay={dealDelayOf(card.id)}
+                style={{ top: j * cardSpacing, zIndex: j }}
                     onClick={(e) => {
                       e.stopPropagation();
                       autoMoveCard({ type: 'tableau', index: i, cardIndex: j });
@@ -181,7 +182,8 @@ export default function SpiderBoard() {
                   key={card.id}
                   card={card}
                   className="absolute w-full"
-                  style={{ top: j * cardSpacing, zIndex: j }}
+                  dealDelay={dealDelayOf(card.id)}
+                style={{ top: j * cardSpacing, zIndex: j }}
                 />
               );
             })}

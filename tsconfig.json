@@ -12,6 +12,8 @@
       "DOM.Iterable"
     ],
     "skipLibCheck": true,
+    // Vite injects import.meta.env; without this it is not on ImportMeta.
+    "types": ["vite/client"],
     "moduleResolution": "bundler",
     "isolatedModules": true,
     "moduleDetection": "force",

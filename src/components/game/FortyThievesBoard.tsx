@@ -41,7 +41,7 @@ export default function FortyThievesBoard() {
   const { cardSpacing, cardHeight } = useTableMetrics(SPACING, HEIGHT);
 
   const dealSeed = useDealSeed();
-  const onDrop = useGameSounds(useFortyThievesStore, handleDrop);
+  const { onDrop, dealDelayOf } = useGameSounds(useFortyThievesStore, handleDrop);
 
   useEffect(() => {
     initGame(false, dealSeed);
@@ -174,7 +174,8 @@ export default function FortyThievesBoard() {
                   location={{ type: 'tableau', index: i, cardIndex: j } as FortyThievesLocation}
                   cardsToDrag={run}
                   canDrag={isValidFortyThievesSequence(run) && run.length <= maxMove}
-                  style={{ top: j * cardSpacing, zIndex: j }}
+                  dealDelay={dealDelayOf(card.id)}
+                style={{ top: j * cardSpacing, zIndex: j }}
                   onClick={(e) => {
                     e.stopPropagation();
                     autoMoveCard({ type: 'tableau', index: i, cardIndex: j });

@@ -42,6 +42,14 @@ export default function GamePlay() {
       missmilligan: useMissMilliganStore,
     };
     
+    // Reaching a real endgame by playing takes hundreds of moves, so the
+    // browser scripts in scripts/ set one up directly. Development only:
+    // import.meta.env.DEV is a compile-time constant, so this whole block is
+    // dropped from the production bundle.
+    if (import.meta.env.DEV) {
+      (window as unknown as { __patience?: unknown }).__patience = stores;
+    }
+
     const store = stores[gameId as GameType];
     if (!store) return;
 

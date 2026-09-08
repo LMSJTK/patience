@@ -32,10 +32,49 @@ export async function useFixedDeal(page, value = 0.4242424242) {
   }, value);
 }
 
-/** Wait until a board has laid its cards out. */
-export async function waitForBoard(page) {
-  await page.waitForSelector('main > div', { timeout: 15000 });
-  await page.waitForTimeout(600);
+/**
+ * A fingerprint of where every card is and how big it is, right now.
+ *
+ * Cards only — not the empty pile frames. The frames are laid out before a
+ * single card exists, so including them makes an undealt board look settled.
+ */
+function cardGeometry() {
+  const cards = Array.from(document.querySelectorAll('main div')).filter(
+    (el) =>
+      el.className.includes('rounded') &&
+      (el.className.includes('bg-white') ||
+        el.className.includes('from-indigo-500') ||
+        el.querySelector('img'))
+  );
+  if (cards.length === 0) return '';
+  return cards
+    .map((el) => {
+      const r = el.getBoundingClientRect();
+      return `${Math.round(r.x)},${Math.round(r.y)},${Math.round(r.width)},${Math.round(r.height)}`;
+    })
+    .join('|');
+}
+
+/**
+ * Wait until the board has stopped moving.
+ *
+ * Cards are dealt with a staggered entry animation, so a board is not ready to
+ * measure the moment it appears. Waiting a fixed time is not enough either:
+ * under load the deal starts later and a timeout catches cards mid-flight, at
+ * the wrong size. Polling until two readings agree is load-independent.
+ */
+export async function waitForBoard(page, { settleMs = 250, timeoutMs = 15000 } = {}) {
+  await page.waitForSelector('main > div', { timeout: timeoutMs });
+
+  const deadline = Date.now() + timeoutMs;
+  let previous = null;
+  while (Date.now() < deadline) {
+    const current = await page.evaluate(cardGeometry);
+    if (current && current === previous) return;
+    previous = current;
+    await page.waitForTimeout(settleMs);
+  }
+  throw new Error('The board never stopped moving; something is animating forever.');
 }
 
 export const GAMES = [

@@ -41,7 +41,7 @@ export default function MissMilliganBoard() {
   const { cardSpacing, cardHeight } = useTableMetrics(SPACING, HEIGHT);
 
   const dealSeed = useDealSeed();
-  const onDrop = useGameSounds(useMissMilliganStore, handleDrop);
+  const { onDrop, dealDelayOf } = useGameSounds(useMissMilliganStore, handleDrop);
 
   useEffect(() => {
     initGame(false, dealSeed);
@@ -137,7 +137,8 @@ export default function MissMilliganBoard() {
                       location={{ type: 'pocket', cardIndex: j } as MissMilliganLocation}
                       cardsToDrag={pocket.slice(j)}
                       canDrag={isValidMissMilliganSequence(pocket.slice(j))}
-                      style={{ top: j * cardSpacing, zIndex: j }}
+                      dealDelay={dealDelayOf(card.id)}
+                style={{ top: j * cardSpacing, zIndex: j }}
                       onClick={(e) => {
                         e.stopPropagation();
                         autoMoveCard({ type: 'pocket', cardIndex: j });
@@ -188,6 +189,7 @@ export default function MissMilliganBoard() {
                 location={{ type: 'tableau', index: i, cardIndex: j } as MissMilliganLocation}
                 cardsToDrag={col.slice(j)}
                 canDrag={isValidMissMilliganSequence(col.slice(j))}
+                dealDelay={dealDelayOf(card.id)}
                 style={{ top: j * cardSpacing, zIndex: j }}
                 onClick={(e) => {
                   e.stopPropagation();
