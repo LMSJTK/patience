@@ -19,10 +19,10 @@ const height = Number(flag('height', '900'));
 
 /**
  * How long to let a move finish before touching the board again. A click-move
- * currently settles around 512 ms (see scripts/trace-move.mjs); Phase 2 brings
- * that under 250 ms, at which point this can come down.
+ * settles in about 225 ms (see scripts/trace-move.mjs), so this leaves room
+ * for a slow machine without making the run crawl.
  */
-const SETTLE_MS = Number(flag('settle', '600'));
+const SETTLE_MS = Number(flag('settle', '400'));
 
 const browser = await launch();
 const page = await browser.newPage({ viewport: { width, height } });
