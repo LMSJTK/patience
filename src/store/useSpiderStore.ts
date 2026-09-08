@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { Card, createDeck, shuffleDeck } from '../lib/cards';
+import { mulberry32, randomSeed } from '../lib/rng';
 import { canMoveToTableau, isValidSpiderSequence, checkForCompletedSequence } from '../lib/solitaire/spider';
 import { useGameStore } from './useGameStore';
 
@@ -19,9 +20,17 @@ interface SpiderState {
   suitCount: 1 | 2 | 4;
   isRelaxed: boolean;
   isWon: boolean;
+  /** The number this deal was shuffled from. Replaying it reproduces these cards. */
+  seed: number;
+  /**
+   * True once this deal has paid out XP. Undo clears isWon so the board is
+   * playable again, but must not clear this, or a win could be banked twice.
+   * Only initGame resets it.
+   */
+  xpAwarded: boolean;
   history: GameStateSnapshot[];
   
-  initGame: (suitCount: 1 | 2 | 4, isRelaxed: boolean) => void;
+  initGame: (suitCount: 1 | 2 | 4, isRelaxed: boolean, seed?: number) => void;
   dealCards: () => void;
   handleDrop: (from: SpiderLocation, to: { type: 'tableau', index: number }) => void;
   autoMoveCard: (location: SpiderLocation) => void;
@@ -57,9 +66,11 @@ export const useSpiderStore = create<SpiderState>((set, get) => ({
   suitCount: 1,
   isRelaxed: false,
   isWon: false,
+  xpAwarded: false,
+  seed: 0,
   history: [],
 
-  initGame: (suitCount, isRelaxed) => {
+  initGame: (suitCount, isRelaxed, seed = randomSeed()) => {
     let deck: Card[] = [];
     if (suitCount === 1) {
       deck = createDeck(8, ['spades']);
@@ -69,7 +80,7 @@ export const useSpiderStore = create<SpiderState>((set, get) => ({
       deck = createDeck(2);
     }
     
-    deck = shuffleDeck(deck);
+    deck = shuffleDeck(deck, mulberry32(seed));
     
     const tableau: Card[][] = Array(10).fill([]).map(() => []);
     
@@ -91,6 +102,8 @@ export const useSpiderStore = create<SpiderState>((set, get) => ({
       suitCount,
       isRelaxed,
       isWon: false,
+      xpAwarded: false,
+      seed,
       history: [],
     });
   },
@@ -253,10 +266,10 @@ export const useSpiderStore = create<SpiderState>((set, get) => ({
 
   checkWin: () => {
     const state = get();
-    if (state.isWon) return;
+    if (state.xpAwarded) return;
     
     if (state.completedSets === 8) {
-      set({ isWon: true });
+      set({ isWon: true, xpAwarded: true });
       useGameStore.getState().addXp('spider', 100 * state.suitCount);
     }
   }

@@ -1,6 +1,8 @@
 {
   "compilerOptions": {
     "target": "ES2022",
+    "strict": true,
+    "noUncheckedIndexedAccess": false,
     "experimentalDecorators": true,
     "useDefineForClassFields": false,
     "module": "ESNext",

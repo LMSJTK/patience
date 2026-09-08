@@ -1,11 +1,22 @@
 import React, { forwardRef } from 'react';
 import { Card as CardType } from '../../lib/cards';
 import { cn } from '../../lib/utils';
-import { motion } from 'motion/react';
+import { motion, useReducedMotion } from 'motion/react';
 import { useGameStore } from '../../store/useGameStore';
 import { Heart, Diamond, Club, Spade } from 'lucide-react';
 
-export interface PlayingCardProps extends React.HTMLAttributes<HTMLDivElement> {
+/**
+ * motion.div redefines the drag and animation handlers with its own
+ * signatures, so those four are dropped rather than passed through. Nothing
+ * renders a card with them, and Phase 2 removes motion from this file
+ * entirely.
+ */
+type DivProps = Omit<
+  React.HTMLAttributes<HTMLDivElement>,
+  'onAnimationStart' | 'onAnimationEnd' | 'onAnimationIteration' | 'onDrag' | 'onDragStart' | 'onDragEnd'
+>;
+
+export interface PlayingCardProps extends DivProps {
   card: CardType;
   isSelected?: boolean;
 }
@@ -21,15 +32,31 @@ const SuitIcon = ({ suit, className }: { suit: string, className?: string }) => 
   }
 };
 
+/**
+ * How a card travels when it changes pile.
+ *
+ * motion's default for a layout transition is a spring, which crawls for the
+ * first tenth of the move and takes about half a second to settle. A short
+ * ease-out reads as a card being dealt: quick off the mark, soft landing.
+ * Measured by `npm run trace`, which fails above 250ms.
+ */
+const MOVE_TRANSITION = { type: 'tween', duration: 0.19, ease: [0.2, 0.8, 0.2, 1] } as const;
+
+/** Instant for anyone who has asked their system for less motion. */
+const NO_MOTION = { duration: 0 } as const;
+
 const PlayingCard = forwardRef<HTMLDivElement, PlayingCardProps>(
   ({ card, className, style, isSelected, ...props }, ref) => {
     const { cardBack } = useGameStore();
+    const reduceMotion = useReducedMotion();
+    const transition = reduceMotion ? NO_MOTION : MOVE_TRANSITION;
 
     if (!card.isFaceUp) {
       return (
         <motion.div
           ref={ref}
           layoutId={card.id}
+          transition={transition}
           className={cn(
             "w-12 h-18 sm:w-16 sm:h-24 md:w-20 md:h-28 lg:w-24 lg:h-36 rounded-lg sm:rounded-xl border-2 shadow-md cursor-pointer overflow-hidden relative",
             cardBack === 'default' ? "bg-gradient-to-br from-indigo-500 to-purple-700 border-white/10" : "border-transparent",
@@ -51,6 +78,7 @@ const PlayingCard = forwardRef<HTMLDivElement, PlayingCardProps>(
       <motion.div
         ref={ref}
         layoutId={card.id}
+        transition={transition}
         className={cn(
           "w-12 h-18 sm:w-16 sm:h-24 md:w-20 md:h-28 lg:w-24 lg:h-36 rounded-lg sm:rounded-xl border shadow-md bg-white flex flex-col justify-between p-1 sm:p-2 cursor-pointer relative overflow-hidden",
           card.color === 'red' ? 'text-red-600 border-red-200' : card.suit === 'clubs' ? 'text-slate-700 border-slate-200' : 'text-black border-slate-200',

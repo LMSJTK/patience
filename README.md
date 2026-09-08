@@ -22,6 +22,32 @@ Nothing else to configure. The one feature that calls the Gemini API — the AI
 card back generator — asks for your own API key under Settings, and keeps it in
 your browser's local storage.
 
+## Development
+
+| Command | What it does |
+| --- | --- |
+| `npm run dev` | Vite dev server on http://localhost:3000 |
+| `npm test` | Unit tests for the rules and store reducers |
+| `npm run lint` | TypeScript, in strict mode |
+| `npm run build` | Production bundle into `dist/` |
+
+Three browser scripts check the things unit tests cannot. Each pins the deal so
+two runs can be compared, and each needs `npm run dev` already running in
+another terminal. They use Playwright: run `npx playwright install chromium`
+once, or set `CHROMIUM_PATH` to a browser you already have.
+
+| Command | What it does |
+| --- | --- |
+| `npm run smoke` | Plays every game and checks moves land and nothing throws |
+| `npm run fingerprint` | Records where every card is; diff two runs to prove a change was invisible |
+| `npm run trace` | Times a card to the foundation, and fails if it takes over 250ms |
+
+### Deal numbers
+
+Every deal is shuffled from a number shown in the game header. The same number
+always deals the same cards, so `/play/klondike?deal=8675309` opens an
+identical game for anyone who follows the link.
+
 ## Run with Docker
 
 **Prerequisites:** Docker Desktop, or Docker Engine with the Compose v2 plugin.

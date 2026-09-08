@@ -1,0 +1,64 @@
+import { useDraggable } from '@dnd-kit/core';
+import React from 'react';
+import { Card } from '../../../lib/cards';
+import { cn } from '../../../lib/utils';
+import PlayingCard from '../PlayingCard';
+
+/**
+ * What a drag carries: where it started, and which cards came with it.
+ * Every game shares this shape; only the location type differs.
+ */
+export interface DragPayload<L> {
+  location: L;
+  cards: Card[];
+}
+
+export interface DraggableCardProps<L> {
+  /**
+   * Declared because TypeScript does not apply JSX's implicit key handling
+   * to a generic component, so a keyed element fails to typecheck without it.
+   */
+  key?: React.Key;
+  card: Card;
+  /** Where this card sits, handed back to the store when the drag lands. */
+  location: L;
+  /** This card and everything stacked on it, moved as one. */
+  cardsToDrag: Card[];
+  /**
+   * The game's own rule beyond "face up" — that the run is a legal sequence,
+   * say, or short enough to move with the free cells available.
+   */
+  canDrag?: boolean;
+  className?: string;
+  style?: React.CSSProperties;
+  onClick?: (e: React.MouseEvent) => void;
+}
+
+export function DraggableCard<L>({
+  card,
+  location,
+  cardsToDrag,
+  canDrag = true,
+  className,
+  style,
+  onClick,
+}: DraggableCardProps<L>) {
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+    id: card.id,
+    data: { location, cards: cardsToDrag },
+    disabled: !card.isFaceUp || !canDrag,
+  });
+
+  return (
+    <div
+      ref={setNodeRef}
+      {...listeners}
+      {...attributes}
+      className={cn('absolute w-full touch-none', className, isDragging && 'opacity-0')}
+      style={style}
+      onClick={onClick}
+    >
+      <PlayingCard card={card} />
+    </div>
+  );
+}

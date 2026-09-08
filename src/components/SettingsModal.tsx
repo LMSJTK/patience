@@ -5,7 +5,8 @@ import { useSettingsStore } from '../store/useSettingsStore';
 import { useAuthStore } from '../store/useAuthStore';
 import { db } from '../lib/firebase';
 import { collection, getDocs, doc, setDoc } from 'firebase/firestore';
-import { GoogleGenAI } from '@google/genai';
+import { GeminiError, generateCardBack } from '../lib/gemini';
+import { playSound, unlockSound } from '../lib/sound';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -15,9 +16,11 @@ interface SettingsModalProps {
 export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   const { cardBack, customCardBacks, setCardBack, addCustomCardBack } = useGameStore();
   const { user } = useAuthStore();
-  const { geminiApiKey, setGeminiApiKey } = useSettingsStore();
+  const { geminiApiKey, setGeminiApiKey, soundEnabled, setSoundEnabled, soundVolume, setSoundVolume } =
+    useSettingsStore();
   const [prompt, setPrompt] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
+  const [generateError, setGenerateError] = useState<string | null>(null);
   const [friends, setFriends] = useState<any[]>([]);
   const [sharingUrl, setSharingUrl] = useState<string | null>(null);
   const [sharedCardBacks, setSharedCardBacks] = useState<any[]>([]);
@@ -55,38 +58,22 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   const handleGenerate = async () => {
     if (!prompt || !geminiApiKey) return;
     setIsGenerating(true);
+    setGenerateError(null);
     try {
-      const ai = new GoogleGenAI({ apiKey: geminiApiKey });
-      const fullPrompt = `${prompt}, playing card back design, symmetrical, vector art, minimalist borders, high contrast, aspect ratio 5:7`;
-      
-      const response = await ai.models.generateContent({
-        model: 'gemini-3.1-flash-image-preview',
-        contents: {
-          parts: [{ text: fullPrompt }],
-        },
-        config: {
-          imageConfig: {
-            aspectRatio: "3:4",
-            imageSize: "512px"
-          }
-        }
-      });
-
-      for (const part of response.candidates?.[0]?.content?.parts || []) {
-        if (part.inlineData) {
-          const base64EncodeString = part.inlineData.data;
-          const imageUrl = `data:image/png;base64,${base64EncodeString}`;
-          addCustomCardBack(imageUrl);
-          setCardBack(imageUrl);
-          break;
-        }
-      }
+      const imageUrl = await generateCardBack(geminiApiKey, prompt);
+      addCustomCardBack(imageUrl);
+      setCardBack(imageUrl);
+      // Only clear on success, so a failed attempt keeps what was typed.
+      setPrompt('');
     } catch (error) {
-      console.error("Failed to generate image", error);
-      alert("Failed to generate image. Check that your Gemini API key is valid and try again.");
+      console.error('Failed to generate card back', error);
+      setGenerateError(
+        error instanceof GeminiError
+          ? error.message
+          : 'Could not generate that card back. Try again.'
+      );
     } finally {
       setIsGenerating(false);
-      setPrompt('');
     }
   };
 
@@ -133,7 +120,50 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
         </div>
         
         <div className="p-6 overflow-y-auto flex-1 space-y-8">
-          
+
+          <section>
+            <h3 className="text-lg font-medium text-white mb-4">Sound</h3>
+            <label className="flex items-center gap-3 text-white cursor-pointer">
+              <input
+                type="checkbox"
+                checked={soundEnabled}
+                onChange={(e) => {
+                  setSoundEnabled(e.target.checked);
+                  // Ticking the box is itself the gesture that lets audio
+                  // start, so play something to prove it worked.
+                  if (e.target.checked) {
+                    unlockSound();
+                    playSound('place');
+                  }
+                }}
+                className="w-4 h-4 rounded bg-slate-700 border-slate-600 accent-indigo-500"
+              />
+              Card sounds
+            </label>
+            <div className="flex items-center gap-3 mt-3">
+              <label htmlFor="sound-volume" className="text-sm text-slate-400 w-16">
+                Volume
+              </label>
+              <input
+                id="sound-volume"
+                type="range"
+                min={0}
+                max={100}
+                value={Math.round(soundVolume * 100)}
+                disabled={!soundEnabled}
+                onChange={(e) => setSoundVolume(Number(e.target.value) / 100)}
+                onPointerUp={() => {
+                  unlockSound();
+                  playSound('place');
+                }}
+                className="flex-1 max-w-xs accent-indigo-500 disabled:opacity-40"
+              />
+              <span className="text-sm text-slate-400 tabular-nums w-10 text-right">
+                {Math.round(soundVolume * 100)}
+              </span>
+            </div>
+          </section>
+
           <section>
             <h3 className="text-lg font-medium text-white mb-4">AI Generator</h3>
             <div className="flex gap-2">
@@ -153,6 +183,12 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                 Generate
               </button>
             </div>
+
+            {generateError && (
+              <p role="alert" className="text-sm text-red-400 mt-2">
+                {generateError}
+              </p>
+            )}
 
             <div className="mt-3">
               <label htmlFor="gemini-key" className="block text-sm text-slate-400 mb-1">

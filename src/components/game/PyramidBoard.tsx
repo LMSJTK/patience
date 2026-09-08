@@ -2,8 +2,9 @@ import React, { useEffect } from 'react';
 import { usePyramidStore } from '../../store/usePyramidStore';
 import PlayingCard from './PlayingCard';
 import { cn } from '../../lib/utils';
-import { Trophy, Undo2, RefreshCw } from 'lucide-react';
+import { Undo2, RefreshCw } from 'lucide-react';
 import { getRowCol, isCardExposed } from '../../lib/solitaire/pyramid';
+import { WinScreen, useDealSeed, useGameSounds } from './table';
 
 const CARD_WIDTH = 80;
 const CARD_HEIGHT = 112;
@@ -16,24 +17,17 @@ export default function PyramidBoard() {
     initGame, drawCard, handleCardClick, undo, history
   } = usePyramidStore();
 
+  const dealSeed = useDealSeed();
+  useGameSounds(usePyramidStore);
+
   useEffect(() => {
-    initGame();
-  }, [initGame]);
+    initGame(dealSeed);
+  }, [initGame, dealSeed]);
 
   if (isWon) {
-    return (
-      <div className="w-full h-full flex flex-col items-center justify-center space-y-6">
-        <Trophy className="w-24 h-24 text-yellow-400" />
-        <h2 className="text-4xl font-bold text-white">You Won!</h2>
-        <p className="text-xl text-green-200">+100 XP</p>
-        <button 
-          onClick={initGame}
-          className="px-6 py-3 bg-white text-green-900 font-bold rounded-xl hover:bg-green-100 transition-colors"
-        >
-          Play Again
-        </button>
-      </div>
-    );
+    // initGame takes an optional seed, so it must not be used as a click
+    // handler directly: React would pass the event in as the deal number.
+    return <WinScreen xp={100} onPlayAgain={() => initGame()} />;
   }
 
   return (
