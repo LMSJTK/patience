@@ -5,7 +5,18 @@ import { motion } from 'motion/react';
 import { useGameStore } from '../../store/useGameStore';
 import { Heart, Diamond, Club, Spade } from 'lucide-react';
 
-export interface PlayingCardProps extends React.HTMLAttributes<HTMLDivElement> {
+/**
+ * motion.div redefines the drag and animation handlers with its own
+ * signatures, so those four are dropped rather than passed through. Nothing
+ * renders a card with them, and Phase 2 removes motion from this file
+ * entirely.
+ */
+type DivProps = Omit<
+  React.HTMLAttributes<HTMLDivElement>,
+  'onAnimationStart' | 'onAnimationEnd' | 'onAnimationIteration' | 'onDrag' | 'onDragStart' | 'onDragEnd'
+>;
+
+export interface PlayingCardProps extends DivProps {
   card: CardType;
   isSelected?: boolean;
 }
