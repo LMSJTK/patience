@@ -1,3 +1,5 @@
+import { Rng } from './rng';
+
 export type Suit = 'hearts' | 'diamonds' | 'clubs' | 'spades';
 export type Rank = 'A' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' | '10' | 'J' | 'Q' | 'K';
 export type Color = 'red' | 'black';
@@ -45,10 +47,14 @@ export function createDeck(decks: number = 1, suits: Suit[] = SUITS): Card[] {
   return deck;
 }
 
-export function shuffleDeck(deck: Card[]): Card[] {
+/**
+ * Fisher-Yates, drawing from `rng` so a seeded generator produces the same
+ * deal every time. Defaults to Math.random for callers that do not care.
+ */
+export function shuffleDeck(deck: Card[], rng: Rng = Math.random): Card[] {
   const newDeck = [...deck];
   for (let i = newDeck.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
+    const j = Math.floor(rng() * (i + 1));
     [newDeck[i], newDeck[j]] = [newDeck[j], newDeck[i]];
   }
   return newDeck;

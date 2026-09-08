@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { Card, createDeck, shuffleDeck } from '../lib/cards';
+import { mulberry32, randomSeed } from '../lib/rng';
 import { canMoveToFoundation, canMoveToTableau, isValidSequence, getMaxMoveCount } from '../lib/solitaire/freecell';
 import { useGameStore } from './useGameStore';
 
@@ -19,9 +20,17 @@ interface FreecellState {
   foundations: Card[][];
   tableau: Card[][];
   isWon: boolean;
+  /** The number this deal was shuffled from. Replaying it reproduces these cards. */
+  seed: number;
+  /**
+   * True once this deal has paid out XP. Undo clears isWon so the board is
+   * playable again, but must not clear this, or a win could be banked twice.
+   * Only initGame resets it.
+   */
+  xpAwarded: boolean;
   history: GameStateSnapshot[];
   
-  initGame: () => void;
+  initGame: (seed?: number) => void;
   handleDrop: (from: FreecellLocation, to: { type: 'tableau' | 'foundation' | 'freecell', index: number }) => void;
   autoMoveCard: (location: FreecellLocation) => void;
   undo: () => void;
@@ -39,10 +48,12 @@ export const useFreecellStore = create<FreecellState>((set, get) => ({
   foundations: [[], [], [], []],
   tableau: [[], [], [], [], [], [], [], []],
   isWon: false,
+  xpAwarded: false,
+  seed: 0,
   history: [],
 
-  initGame: () => {
-    const deck = shuffleDeck(createDeck()).map(c => ({ ...c, isFaceUp: true }));
+  initGame: (seed = randomSeed()) => {
+    const deck = shuffleDeck(createDeck(), mulberry32(seed)).map(c => ({ ...c, isFaceUp: true }));
     const tableau: Card[][] = [[], [], [], [], [], [], [], []];
     
     let cardIndex = 0;
@@ -58,6 +69,8 @@ export const useFreecellStore = create<FreecellState>((set, get) => ({
       foundations: [[], [], [], []],
       tableau,
       isWon: false,
+      xpAwarded: false,
+      seed,
       history: [],
     });
   },
@@ -224,11 +237,11 @@ export const useFreecellStore = create<FreecellState>((set, get) => ({
 
   checkWin: () => {
     const state = get();
-    if (state.isWon) return;
+    if (state.xpAwarded) return;
     
     const isWon = state.foundations.every(col => col.length === 13);
     if (isWon) {
-      set({ isWon: true });
+      set({ isWon: true, xpAwarded: true });
       useGameStore.getState().addXp('freecell', 100);
     }
   }

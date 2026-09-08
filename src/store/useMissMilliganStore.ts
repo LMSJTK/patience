@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { Card, createDeck, shuffleDeck } from '../lib/cards';
+import { mulberry32, randomSeed } from '../lib/rng';
 import { canMoveToFoundation, canMoveToTableau, isValidMissMilliganSequence } from '../lib/solitaire/missmilligan';
 import { useGameStore } from './useGameStore';
 
@@ -22,9 +23,17 @@ interface MissMilliganState {
   pocket: Card[];
   isTabbyCat: boolean;
   isWon: boolean;
+  /** The number this deal was shuffled from. Replaying it reproduces these cards. */
+  seed: number;
+  /**
+   * True once this deal has paid out XP. Undo clears isWon so the board is
+   * playable again, but must not clear this, or a win could be banked twice.
+   * Only initGame resets it.
+   */
+  xpAwarded: boolean;
   history: GameStateSnapshot[];
   
-  initGame: (isTabbyCat?: boolean) => void;
+  initGame: (isTabbyCat?: boolean, seed?: number) => void;
   dealCards: () => void;
   handleDrop: (from: MissMilliganLocation, to: { type: 'tableau' | 'foundation' | 'pocket', index?: number }) => void;
   autoMoveCard: (location: MissMilliganLocation) => void;
@@ -46,12 +55,14 @@ export const useMissMilliganStore = create<MissMilliganState>((set, get) => ({
   pocket: [],
   isTabbyCat: false,
   isWon: false,
+  xpAwarded: false,
+  seed: 0,
   history: [],
 
-  initGame: (isTabbyCat = false) => {
+  initGame: (isTabbyCat = false, seed = randomSeed()) => {
     // 2 decks
     let deck = createDeck(2);
-    deck = shuffleDeck(deck);
+    deck = shuffleDeck(deck, mulberry32(seed));
     
     const tableau: Card[][] = Array(8).fill([]).map(() => []);
     
@@ -69,6 +80,8 @@ export const useMissMilliganStore = create<MissMilliganState>((set, get) => ({
       pocket: [],
       isTabbyCat,
       isWon: false,
+      xpAwarded: false,
+      seed,
       history: [],
     });
   },
@@ -268,11 +281,11 @@ export const useMissMilliganStore = create<MissMilliganState>((set, get) => ({
 
   checkWin: () => {
     const state = get();
-    if (state.isWon) return;
+    if (state.xpAwarded) return;
     
     const isWon = state.foundations.every(col => col.length === 13);
     if (isWon) {
-      set({ isWon: true });
+      set({ isWon: true, xpAwarded: true });
       useGameStore.getState().addXp('missmilligan', 250); // Hard game, high XP
     }
   }

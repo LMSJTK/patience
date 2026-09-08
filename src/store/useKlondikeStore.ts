@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { Card, createDeck, shuffleDeck } from '../lib/cards';
+import { mulberry32, randomSeed } from '../lib/rng';
 import { canMoveToFoundation, canMoveToTableau } from '../lib/solitaire/klondike';
 import { useGameStore } from './useGameStore';
 
@@ -23,9 +24,17 @@ interface KlondikeState {
   drawCount: 1 | 3;
   selectedLocation: CardLocation | null;
   isWon: boolean;
+  /** The number this deal was shuffled from. Replaying it reproduces these cards. */
+  seed: number;
+  /**
+   * True once this deal has paid out XP. Undo clears isWon so the board is
+   * playable again, but must not clear this, or a win could be banked twice.
+   * Only initGame resets it.
+   */
+  xpAwarded: boolean;
   history: GameStateSnapshot[];
   
-  initGame: (drawCount: 1 | 3) => void;
+  initGame: (drawCount: 1 | 3, seed?: number) => void;
   drawCard: () => void;
   selectCard: (location: CardLocation) => void;
   handleDrop: (from: CardLocation, to: { type: 'tableau' | 'foundation', index: number }) => void;
@@ -49,10 +58,12 @@ export const useKlondikeStore = create<KlondikeState>((set, get) => ({
   drawCount: 1,
   selectedLocation: null,
   isWon: false,
+  xpAwarded: false,
+  seed: 0,
   history: [],
 
-  initGame: (drawCount) => {
-    const deck = shuffleDeck(createDeck());
+  initGame: (drawCount, seed = randomSeed()) => {
+    const deck = shuffleDeck(createDeck(), mulberry32(seed));
     const tableau: Card[][] = [[], [], [], [], [], [], []];
     
     let cardIndex = 0;
@@ -72,6 +83,8 @@ export const useKlondikeStore = create<KlondikeState>((set, get) => ({
       drawCount,
       selectedLocation: null,
       isWon: false,
+      xpAwarded: false,
+      seed,
       history: [],
     });
   },
@@ -241,11 +254,11 @@ export const useKlondikeStore = create<KlondikeState>((set, get) => ({
 
   checkWin: () => {
     const state = get();
-    if (state.isWon) return;
+    if (state.xpAwarded) return;
     
     const isWon = state.foundations.every(col => col.length === 13);
     if (isWon) {
-      set({ isWon: true });
+      set({ isWon: true, xpAwarded: true });
       useGameStore.getState().addXp('klondike', 100);
     }
   }

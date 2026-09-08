@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { Card, createDeck, shuffleDeck } from '../lib/cards';
+import { mulberry32, randomSeed } from '../lib/rng';
 import { canMoveToFoundation, canMoveToTableau, isValidFortyThievesSequence, getMaxMoveCount } from '../lib/solitaire/fortythieves';
 import { useGameStore } from './useGameStore';
 
@@ -22,9 +23,17 @@ interface FortyThievesState {
   tableau: Card[][];
   isJosephine: boolean;
   isWon: boolean;
+  /** The number this deal was shuffled from. Replaying it reproduces these cards. */
+  seed: number;
+  /**
+   * True once this deal has paid out XP. Undo clears isWon so the board is
+   * playable again, but must not clear this, or a win could be banked twice.
+   * Only initGame resets it.
+   */
+  xpAwarded: boolean;
   history: GameStateSnapshot[];
   
-  initGame: (isJosephine?: boolean) => void;
+  initGame: (isJosephine?: boolean, seed?: number) => void;
   drawCard: () => void;
   handleDrop: (from: FortyThievesLocation, to: { type: 'tableau' | 'foundation', index: number }) => void;
   autoMoveCard: (location: FortyThievesLocation) => void;
@@ -46,12 +55,14 @@ export const useFortyThievesStore = create<FortyThievesState>((set, get) => ({
   tableau: Array(10).fill([]),
   isJosephine: false,
   isWon: false,
+  xpAwarded: false,
+  seed: 0,
   history: [],
 
-  initGame: (isJosephine = false) => {
+  initGame: (isJosephine = false, seed = randomSeed()) => {
     // 2 decks
     let deck = createDeck(2);
-    deck = shuffleDeck(deck);
+    deck = shuffleDeck(deck, mulberry32(seed));
     
     const tableau: Card[][] = Array(10).fill([]).map(() => []);
     
@@ -71,6 +82,8 @@ export const useFortyThievesStore = create<FortyThievesState>((set, get) => ({
       tableau,
       isJosephine,
       isWon: false,
+      xpAwarded: false,
+      seed,
       history: [],
     });
   },
@@ -246,11 +259,11 @@ export const useFortyThievesStore = create<FortyThievesState>((set, get) => ({
 
   checkWin: () => {
     const state = get();
-    if (state.isWon) return;
+    if (state.xpAwarded) return;
     
     const isWon = state.foundations.every(col => col.length === 13);
     if (isWon) {
-      set({ isWon: true });
+      set({ isWon: true, xpAwarded: true });
       useGameStore.getState().addXp('fortythieves', 200); // Harder game, more XP
     }
   }

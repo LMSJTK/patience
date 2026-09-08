@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { Card, createDeck, shuffleDeck } from '../lib/cards';
+import { mulberry32, randomSeed } from '../lib/rng';
 import { isCardExposed } from '../lib/solitaire/pyramid';
 import { useGameStore } from './useGameStore';
 
@@ -19,9 +20,17 @@ interface PyramidState {
   pyramid: (Card | null)[];
   selectedCard: { card: Card, location: PyramidLocation } | null;
   isWon: boolean;
+  /** The number this deal was shuffled from. Replaying it reproduces these cards. */
+  seed: number;
+  /**
+   * True once this deal has paid out XP. Undo clears isWon so the board is
+   * playable again, but must not clear this, or a win could be banked twice.
+   * Only initGame resets it.
+   */
+  xpAwarded: boolean;
   history: GameStateSnapshot[];
   
-  initGame: () => void;
+  initGame: (seed?: number) => void;
   drawCard: () => void;
   handleCardClick: (card: Card, location: PyramidLocation) => void;
   undo: () => void;
@@ -40,11 +49,13 @@ export const usePyramidStore = create<PyramidState>((set, get) => ({
   pyramid: Array(28).fill(null),
   selectedCard: null,
   isWon: false,
+  xpAwarded: false,
+  seed: 0,
   history: [],
 
-  initGame: () => {
+  initGame: (seed = randomSeed()) => {
     let deck = createDeck(1);
-    deck = shuffleDeck(deck);
+    deck = shuffleDeck(deck, mulberry32(seed));
     
     const pyramid: (Card | null)[] = [];
     for (let i = 0; i < 28; i++) {
@@ -59,6 +70,8 @@ export const usePyramidStore = create<PyramidState>((set, get) => ({
       pyramid,
       selectedCard: null,
       isWon: false,
+      xpAwarded: false,
+      seed,
       history: [],
     });
   },
@@ -188,11 +201,11 @@ export const usePyramidStore = create<PyramidState>((set, get) => ({
 
   checkWin: () => {
     const state = get();
-    if (state.isWon) return;
+    if (state.xpAwarded) return;
     
     // Win condition: pyramid is completely empty
     if (state.pyramid.every(c => c === null)) {
-      set({ isWon: true });
+      set({ isWon: true, xpAwarded: true });
       useGameStore.getState().addXp('pyramid', 100);
     }
   }
