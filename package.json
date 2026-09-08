@@ -11,7 +11,10 @@
     "lint": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "coverage": "vitest run --coverage"
+    "coverage": "vitest run --coverage",
+    "smoke": "node scripts/smoke.mjs",
+    "fingerprint": "node scripts/fingerprint.mjs",
+    "trace": "node scripts/trace-move.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
@@ -31,6 +34,7 @@
   "devDependencies": {
     "@types/node": "^22.14.0",
     "@vitest/coverage-v8": "^5.0.0",
+    "playwright": "^1.63.0",
     "tailwindcss": "^4.1.14",
     "typescript": "~5.8.2",
     "vite": "^6.2.0",
