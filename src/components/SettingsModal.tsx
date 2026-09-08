@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Upload, Wand2, Share2 } from 'lucide-react';
 import { useGameStore } from '../store/useGameStore';
+import { useSettingsStore } from '../store/useSettingsStore';
 import { useAuthStore } from '../store/useAuthStore';
 import { db } from '../lib/firebase';
 import { collection, getDocs, doc, setDoc } from 'firebase/firestore';
@@ -14,6 +15,7 @@ interface SettingsModalProps {
 export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   const { cardBack, customCardBacks, setCardBack, addCustomCardBack } = useGameStore();
   const { user } = useAuthStore();
+  const { geminiApiKey, setGeminiApiKey } = useSettingsStore();
   const [prompt, setPrompt] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [friends, setFriends] = useState<any[]>([]);
@@ -51,10 +53,10 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   if (!isOpen) return null;
 
   const handleGenerate = async () => {
-    if (!prompt) return;
+    if (!prompt || !geminiApiKey) return;
     setIsGenerating(true);
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+      const ai = new GoogleGenAI({ apiKey: geminiApiKey });
       const fullPrompt = `${prompt}, playing card back design, symmetrical, vector art, minimalist borders, high contrast, aspect ratio 5:7`;
       
       const response = await ai.models.generateContent({
@@ -81,7 +83,7 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
       }
     } catch (error) {
       console.error("Failed to generate image", error);
-      alert("Failed to generate image. Please try again.");
+      alert("Failed to generate image. Check that your Gemini API key is valid and try again.");
     } finally {
       setIsGenerating(false);
       setPrompt('');
@@ -144,12 +146,39 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
               />
               <button 
                 onClick={handleGenerate}
-                disabled={isGenerating || !prompt}
+                disabled={isGenerating || !prompt || !geminiApiKey}
                 className="bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed px-4 py-2 rounded-xl text-white font-medium flex items-center gap-2"
               >
                 {isGenerating ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Wand2 className="w-5 h-5" />}
                 Generate
               </button>
+            </div>
+
+            <div className="mt-3">
+              <label htmlFor="gemini-key" className="block text-sm text-slate-400 mb-1">
+                Gemini API key
+              </label>
+              <input
+                id="gemini-key"
+                type="password"
+                value={geminiApiKey}
+                onChange={(e) => setGeminiApiKey(e.target.value)}
+                placeholder="Paste a key to enable generation"
+                autoComplete="off"
+                className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2 text-white focus:outline-none focus:border-indigo-500"
+              />
+              <p className="text-xs text-slate-500 mt-1">
+                Kept in this browser only, never uploaded. Get one at{' '}
+                <a
+                  href="https://aistudio.google.com/apikey"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-indigo-400 hover:text-indigo-300 underline"
+                >
+                  aistudio.google.com/apikey
+                </a>
+                .
+              </p>
             </div>
           </section>
 
