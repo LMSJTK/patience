@@ -5,7 +5,7 @@ import { useSettingsStore } from '../store/useSettingsStore';
 import { useAuthStore } from '../store/useAuthStore';
 import { db } from '../lib/firebase';
 import { collection, getDocs, doc, setDoc } from 'firebase/firestore';
-import { GoogleGenAI } from '@google/genai';
+import { GeminiError, generateCardBack } from '../lib/gemini';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -18,6 +18,7 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   const { geminiApiKey, setGeminiApiKey } = useSettingsStore();
   const [prompt, setPrompt] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
+  const [generateError, setGenerateError] = useState<string | null>(null);
   const [friends, setFriends] = useState<any[]>([]);
   const [sharingUrl, setSharingUrl] = useState<string | null>(null);
   const [sharedCardBacks, setSharedCardBacks] = useState<any[]>([]);
@@ -55,38 +56,22 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   const handleGenerate = async () => {
     if (!prompt || !geminiApiKey) return;
     setIsGenerating(true);
+    setGenerateError(null);
     try {
-      const ai = new GoogleGenAI({ apiKey: geminiApiKey });
-      const fullPrompt = `${prompt}, playing card back design, symmetrical, vector art, minimalist borders, high contrast, aspect ratio 5:7`;
-      
-      const response = await ai.models.generateContent({
-        model: 'gemini-3.1-flash-image-preview',
-        contents: {
-          parts: [{ text: fullPrompt }],
-        },
-        config: {
-          imageConfig: {
-            aspectRatio: "3:4",
-            imageSize: "512px"
-          }
-        }
-      });
-
-      for (const part of response.candidates?.[0]?.content?.parts || []) {
-        if (part.inlineData) {
-          const base64EncodeString = part.inlineData.data;
-          const imageUrl = `data:image/png;base64,${base64EncodeString}`;
-          addCustomCardBack(imageUrl);
-          setCardBack(imageUrl);
-          break;
-        }
-      }
+      const imageUrl = await generateCardBack(geminiApiKey, prompt);
+      addCustomCardBack(imageUrl);
+      setCardBack(imageUrl);
+      // Only clear on success, so a failed attempt keeps what was typed.
+      setPrompt('');
     } catch (error) {
-      console.error("Failed to generate image", error);
-      alert("Failed to generate image. Check that your Gemini API key is valid and try again.");
+      console.error('Failed to generate card back', error);
+      setGenerateError(
+        error instanceof GeminiError
+          ? error.message
+          : 'Could not generate that card back. Try again.'
+      );
     } finally {
       setIsGenerating(false);
-      setPrompt('');
     }
   };
 
@@ -153,6 +138,12 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                 Generate
               </button>
             </div>
+
+            {generateError && (
+              <p role="alert" className="text-sm text-red-400 mt-2">
+                {generateError}
+              </p>
+            )}
 
             <div className="mt-3">
               <label htmlFor="gemini-key" className="block text-sm text-slate-400 mb-1">
