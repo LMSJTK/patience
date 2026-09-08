@@ -1,0 +1,37 @@
+services:
+  # Dev server with hot reload - the default target of `docker compose up`.
+  app:
+    build:
+      context: .
+      target: dev
+    ports:
+      - "${DEV_PORT:-3000}:3000"
+    environment:
+      # Passed through only when set on the host, so an unset variable here
+      # cannot shadow the value Vite reads from the mounted .env file.
+      - GEMINI_API_KEY
+      # Set to "true" if edits on the host do not trigger a reload (common on
+      # macOS and Windows, where inotify events do not cross the bind mount).
+      - CHOKIDAR_USEPOLLING
+    volumes:
+      # Live source for hot reload.
+      - .:/app
+      # Keeps the container's Linux-native node_modules from being shadowed by
+      # the host directory of the same name.
+      - node_modules:/app/node_modules
+    init: true
+
+  # Production build served by nginx: `docker compose --profile prod up prod`.
+  prod:
+    profiles: [prod]
+    build:
+      context: .
+      target: prod
+      args:
+        # Read from the shell or from .env, and baked into the bundle.
+        GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+    ports:
+      - "${PROD_PORT:-8080}:80"
+
+volumes:
+  node_modules:

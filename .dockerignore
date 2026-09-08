@@ -1,0 +1,21 @@
+# Installed inside the image instead - host binaries are the wrong platform.
+node_modules/
+
+# Build output is produced in the image.
+dist/
+build/
+coverage/
+
+# Secrets are passed in as env vars / build args, never baked into a layer.
+.env
+.env.*
+!.env.example
+
+.git/
+.gitignore
+.DS_Store
+*.log
+Dockerfile
+.dockerignore
+docker-compose.yml
+README.md
