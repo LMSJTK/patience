@@ -1,4 +1,4 @@
-import { Settings, Undo2 } from 'lucide-react';
+import { FastForward, Settings, Undo2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { CardLocation, useKlondikeStore } from '../../store/useKlondikeStore';
 import PlayingCard from './PlayingCard';
@@ -26,22 +26,51 @@ const SPACING: Ladder = [16, 22, 28, 28];
 const HEIGHT: Ladder = [96, 112, 144, 144];
 
 export default function KlondikeBoard() {
-  const { stock, waste, foundations, tableau, initGame, selectCard, isWon, handleDrop, undo, history } =
-    useKlondikeStore();
+  const {
+    stock,
+    waste,
+    foundations,
+    tableau,
+    initGame,
+    selectCard,
+    isWon,
+    handleDrop,
+    undo,
+    history,
+    canAutoComplete,
+  } = useKlondikeStore();
 
   const [showSettings, setShowSettings] = useState(false);
+  const [finishing, setFinishing] = useState(false);
   const { cardSpacing, cardHeight } = useTableMetrics(SPACING, HEIGHT);
 
   const dealSeed = useDealSeed();
-  const onDrop = useGameSounds(useKlondikeStore, handleDrop);
+  const { onDrop, dealDelayOf } = useGameSounds(useKlondikeStore, handleDrop);
 
   useEffect(() => {
     initGame(1, dealSeed);
   }, [initGame, dealSeed]);
 
+  // Play the rest out one move at a time. Slower than the move animation on
+  // purpose: the cascade is the reward for winning, so it should be watchable.
+  useEffect(() => {
+    if (!finishing) return;
+    const id = window.setInterval(() => {
+      if (!useKlondikeStore.getState().autoCompleteStep()) setFinishing(false);
+    }, 130);
+    return () => window.clearInterval(id);
+  }, [finishing]);
+
+  // A new deal cancels a finish that is still running.
+  useEffect(() => {
+    setFinishing(false);
+  }, [dealSeed]);
+
   if (isWon) {
     return <WinScreen xp={100} onPlayAgain={() => initGame(useKlondikeStore.getState().drawCount)} />;
   }
+
+  const canFinish = canAutoComplete();
 
   return (
     <CardTable<CardLocation, KlondikeTarget>
@@ -71,13 +100,25 @@ export default function KlondikeBoard() {
             </div>
           )}
         </div>
-        <button
+        <div className="flex gap-2 sm:gap-4">
+          {canFinish && (
+            <button
+              onClick={() => setFinishing(true)}
+              disabled={finishing}
+              className="flex items-center gap-2 px-3 py-1.5 sm:px-4 sm:py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-500 disabled:opacity-60 transition-colors text-xs sm:text-sm font-medium"
+            >
+              <FastForward className="w-3 h-3 sm:w-4 sm:h-4" />
+              {finishing ? 'Finishing…' : 'Finish'}
+            </button>
+          )}
+          <button
           onClick={undo}
           disabled={history.length === 0}
           className="flex items-center gap-2 px-3 py-1.5 sm:px-4 sm:py-2 bg-slate-800 text-white rounded-lg hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-xs sm:text-sm"
         >
           <Undo2 className="w-3 h-3 sm:w-4 sm:h-4" /> Undo
-        </button>
+          </button>
+        </div>
       </div>
 
       {/* Top Row: Stock, Waste, Foundations */}
@@ -152,7 +193,8 @@ export default function KlondikeBoard() {
                     card={card}
                     location={{ type: 'tableau', index: i, cardIndex: j } as CardLocation}
                     cardsToDrag={col.slice(j)}
-                    style={{ top: j * cardSpacing, zIndex: j }}
+                    dealDelay={dealDelayOf(card.id)}
+                style={{ top: j * cardSpacing, zIndex: j }}
                     onClick={(e) => {
                       e.stopPropagation();
                       selectCard({ type: 'tableau', index: i, cardIndex: j });
@@ -165,7 +207,8 @@ export default function KlondikeBoard() {
                   key={card.id}
                   card={card}
                   className="absolute w-full"
-                  style={{ top: j * cardSpacing, zIndex: j }}
+                  dealDelay={dealDelayOf(card.id)}
+                style={{ top: j * cardSpacing, zIndex: j }}
                 />
               );
             })}

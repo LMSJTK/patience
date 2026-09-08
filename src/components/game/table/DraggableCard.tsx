@@ -29,6 +29,8 @@ export interface DraggableCardProps<L> {
    * say, or short enough to move with the free cells available.
    */
   canDrag?: boolean;
+  /** Passed through to the card, so dealt cards animate in. */
+  dealDelay?: number;
   className?: string;
   style?: React.CSSProperties;
   onClick?: (e: React.MouseEvent) => void;
@@ -39,6 +41,7 @@ export function DraggableCard<L>({
   location,
   cardsToDrag,
   canDrag = true,
+  dealDelay,
   className,
   style,
   onClick,
@@ -58,7 +61,7 @@ export function DraggableCard<L>({
       style={style}
       onClick={onClick}
     >
-      <PlayingCard card={card} />
+      <PlayingCard card={card} dealDelay={dealDelay} />
     </div>
   );
 }

@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { Card, createDeck, shuffleDeck } from '../lib/cards';
 import { mulberry32, randomSeed } from '../lib/rng';
 import { canMoveToFoundation, canMoveToTableau } from '../lib/solitaire/klondike';
+import { nextAutoMove, willAutoCompleteClear } from '../lib/solitaire/klondikeAuto';
 import { useGameStore } from './useGameStore';
 
 export type CardLocation = 
@@ -41,6 +42,10 @@ interface KlondikeState {
   autoMoveCard: (location: CardLocation) => void;
   undo: () => void;
   checkWin: () => void;
+  /** True when pressing Finish would actually finish the game. */
+  canAutoComplete: () => boolean;
+  /** Play one forced move. False when there is nothing left to do. */
+  autoCompleteStep: () => boolean;
 }
 
 const cloneState = (state: Partial<KlondikeState>): GameStateSnapshot => ({
@@ -251,6 +256,46 @@ export const useKlondikeStore = create<KlondikeState>((set, get) => ({
       isWon: false,
     };
   }),
+
+  canAutoComplete: () => {
+    const state = get();
+    if (state.isWon) return false;
+    // Simulated in full rather than guessed at, so the button never appears
+    // on a board it cannot actually finish. Cheap until the endgame: the
+    // check bails immediately while any card is still face down.
+    return willAutoCompleteClear(state, state.drawCount);
+  },
+
+  autoCompleteStep: () => {
+    const state = get();
+    if (state.isWon) return false;
+
+    const move = nextAutoMove(state);
+    if (!move) return false;
+
+    if (move.kind === 'draw') {
+      get().drawCard();
+      return true;
+    }
+
+    const from: CardLocation =
+      move.kind === 'toFoundation' && move.from === 'waste'
+        ? { type: 'waste' }
+        : {
+            type: 'tableau',
+            index: move.kind === 'toFoundation' ? (move.from as number) : move.from,
+            cardIndex:
+              state.tableau[move.kind === 'toFoundation' ? (move.from as number) : move.from]
+                .length - 1,
+          };
+
+    if (move.kind === 'toFoundation') {
+      get().handleDrop(from, { type: 'foundation', index: move.foundation });
+    } else {
+      get().handleDrop(from, { type: 'tableau', index: move.to });
+    }
+    return true;
+  },
 
   checkWin: () => {
     const state = get();

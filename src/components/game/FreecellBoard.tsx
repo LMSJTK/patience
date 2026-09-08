@@ -27,7 +27,7 @@ export default function FreecellBoard() {
   const { cardSpacing, cardHeight } = useTableMetrics(SPACING, HEIGHT);
 
   const dealSeed = useDealSeed();
-  const onDrop = useGameSounds(useFreecellStore, handleDrop);
+  const { onDrop, dealDelayOf } = useGameSounds(useFreecellStore, handleDrop);
 
   useEffect(() => {
     initGame(dealSeed);
@@ -117,6 +117,7 @@ export default function FreecellBoard() {
                 location={{ type: 'tableau', index: i, cardIndex: j } as FreecellLocation}
                 cardsToDrag={col.slice(j)}
                 canDrag={isValidSequence(col.slice(j))}
+                dealDelay={dealDelayOf(card.id)}
                 style={{ top: j * cardSpacing, zIndex: j }}
                 onClick={(e) => {
                   e.stopPropagation();

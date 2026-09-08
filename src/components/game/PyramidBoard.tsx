@@ -18,7 +18,7 @@ export default function PyramidBoard() {
   } = usePyramidStore();
 
   const dealSeed = useDealSeed();
-  useGameSounds(usePyramidStore);
+  const { dealDelayOf } = useGameSounds(usePyramidStore);
 
   useEffect(() => {
     initGame(dealSeed);
@@ -67,6 +67,7 @@ export default function PyramidBoard() {
                 <div onClick={() => isExposed && handleCardClick(card, { type: 'pyramid', index: i })}>
                   <PlayingCard 
                     card={card} 
+                    dealDelay={dealDelayOf(card.id)}
                     className={cn(
                       "w-20 h-28 shadow-md transition-all",
                       !isExposed && "brightness-75",
