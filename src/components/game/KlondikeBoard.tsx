@@ -9,6 +9,7 @@ import {
   Ladder,
   WinScreen,
   useDealSeed,
+  useGameSounds,
   useTableMetrics,
 } from './table';
 
@@ -32,6 +33,7 @@ export default function KlondikeBoard() {
   const { cardSpacing, cardHeight } = useTableMetrics(SPACING, HEIGHT);
 
   const dealSeed = useDealSeed();
+  const onDrop = useGameSounds(useKlondikeStore, handleDrop);
 
   useEffect(() => {
     initGame(1, dealSeed);
@@ -43,7 +45,7 @@ export default function KlondikeBoard() {
 
   return (
     <CardTable<CardLocation, KlondikeTarget>
-      onDrop={handleDrop}
+      onDrop={onDrop}
       cardSpacing={cardSpacing}
       className="max-w-6xl"
     >

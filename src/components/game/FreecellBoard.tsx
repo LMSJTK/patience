@@ -10,6 +10,7 @@ import {
   Ladder,
   WinScreen,
   useDealSeed,
+  useGameSounds,
   useTableMetrics,
 } from './table';
 
@@ -26,6 +27,7 @@ export default function FreecellBoard() {
   const { cardSpacing, cardHeight } = useTableMetrics(SPACING, HEIGHT);
 
   const dealSeed = useDealSeed();
+  const onDrop = useGameSounds(useFreecellStore, handleDrop);
 
   useEffect(() => {
     initGame(dealSeed);
@@ -37,7 +39,7 @@ export default function FreecellBoard() {
 
   return (
     <CardTable<FreecellLocation, FreecellTarget>
-      onDrop={handleDrop}
+      onDrop={onDrop}
       cardSpacing={cardSpacing}
       className="max-w-7xl"
     >

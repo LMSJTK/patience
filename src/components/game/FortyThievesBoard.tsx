@@ -11,6 +11,7 @@ import {
   Ladder,
   WinScreen,
   useDealSeed,
+  useGameSounds,
   useTableMetrics,
 } from './table';
 
@@ -40,6 +41,7 @@ export default function FortyThievesBoard() {
   const { cardSpacing, cardHeight } = useTableMetrics(SPACING, HEIGHT);
 
   const dealSeed = useDealSeed();
+  const onDrop = useGameSounds(useFortyThievesStore, handleDrop);
 
   useEffect(() => {
     initGame(false, dealSeed);
@@ -58,7 +60,7 @@ export default function FortyThievesBoard() {
 
   return (
     <CardTable<FortyThievesLocation, FortyThievesTarget>
-      onDrop={handleDrop}
+      onDrop={onDrop}
       cardSpacing={cardSpacing}
       className="max-w-7xl"
     >

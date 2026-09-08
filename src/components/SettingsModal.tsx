@@ -6,6 +6,7 @@ import { useAuthStore } from '../store/useAuthStore';
 import { db } from '../lib/firebase';
 import { collection, getDocs, doc, setDoc } from 'firebase/firestore';
 import { GeminiError, generateCardBack } from '../lib/gemini';
+import { playSound, unlockSound } from '../lib/sound';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -15,7 +16,8 @@ interface SettingsModalProps {
 export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   const { cardBack, customCardBacks, setCardBack, addCustomCardBack } = useGameStore();
   const { user } = useAuthStore();
-  const { geminiApiKey, setGeminiApiKey } = useSettingsStore();
+  const { geminiApiKey, setGeminiApiKey, soundEnabled, setSoundEnabled, soundVolume, setSoundVolume } =
+    useSettingsStore();
   const [prompt, setPrompt] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [generateError, setGenerateError] = useState<string | null>(null);
@@ -118,7 +120,50 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
         </div>
         
         <div className="p-6 overflow-y-auto flex-1 space-y-8">
-          
+
+          <section>
+            <h3 className="text-lg font-medium text-white mb-4">Sound</h3>
+            <label className="flex items-center gap-3 text-white cursor-pointer">
+              <input
+                type="checkbox"
+                checked={soundEnabled}
+                onChange={(e) => {
+                  setSoundEnabled(e.target.checked);
+                  // Ticking the box is itself the gesture that lets audio
+                  // start, so play something to prove it worked.
+                  if (e.target.checked) {
+                    unlockSound();
+                    playSound('place');
+                  }
+                }}
+                className="w-4 h-4 rounded bg-slate-700 border-slate-600 accent-indigo-500"
+              />
+              Card sounds
+            </label>
+            <div className="flex items-center gap-3 mt-3">
+              <label htmlFor="sound-volume" className="text-sm text-slate-400 w-16">
+                Volume
+              </label>
+              <input
+                id="sound-volume"
+                type="range"
+                min={0}
+                max={100}
+                value={Math.round(soundVolume * 100)}
+                disabled={!soundEnabled}
+                onChange={(e) => setSoundVolume(Number(e.target.value) / 100)}
+                onPointerUp={() => {
+                  unlockSound();
+                  playSound('place');
+                }}
+                className="flex-1 max-w-xs accent-indigo-500 disabled:opacity-40"
+              />
+              <span className="text-sm text-slate-400 tabular-nums w-10 text-right">
+                {Math.round(soundVolume * 100)}
+              </span>
+            </div>
+          </section>
+
           <section>
             <h3 className="text-lg font-medium text-white mb-4">AI Generator</h3>
             <div className="flex gap-2">

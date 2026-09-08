@@ -11,6 +11,7 @@ import {
   Ladder,
   WinScreen,
   useDealSeed,
+  useGameSounds,
   useTableMetrics,
 } from './table';
 
@@ -40,6 +41,7 @@ export default function SpiderBoard() {
   const { cardSpacing, cardHeight } = useTableMetrics(SPACING, HEIGHT);
 
   const dealSeed = useDealSeed();
+  const onDrop = useGameSounds(useSpiderStore, handleDrop);
 
   useEffect(() => {
     initGame(1, false, dealSeed);
@@ -51,7 +53,7 @@ export default function SpiderBoard() {
 
   return (
     <CardTable<SpiderLocation, SpiderTarget>
-      onDrop={handleDrop}
+      onDrop={onDrop}
       cardSpacing={cardSpacing}
       className="max-w-7xl"
     >

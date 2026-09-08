@@ -11,6 +11,7 @@ import {
   Ladder,
   WinScreen,
   useDealSeed,
+  useGameSounds,
   useTableMetrics,
 } from './table';
 
@@ -40,6 +41,7 @@ export default function MissMilliganBoard() {
   const { cardSpacing, cardHeight } = useTableMetrics(SPACING, HEIGHT);
 
   const dealSeed = useDealSeed();
+  const onDrop = useGameSounds(useMissMilliganStore, handleDrop);
 
   useEffect(() => {
     initGame(false, dealSeed);
@@ -51,7 +53,7 @@ export default function MissMilliganBoard() {
 
   return (
     <CardTable<MissMilliganLocation, MissMilliganTarget>
-      onDrop={handleDrop}
+      onDrop={onDrop}
       cardSpacing={cardSpacing}
       className="max-w-7xl"
     >
