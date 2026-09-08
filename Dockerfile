@@ -30,11 +30,6 @@ CMD ["npm", "run", "dev"]
 FROM deps AS build
 WORKDIR /app
 COPY . .
-# vite.config.ts inlines this value into the JS bundle at build time, so the
-# generated assets contain the key in plain text. See README before shipping
-# an image built this way anywhere public.
-ARG GEMINI_API_KEY=""
-ENV GEMINI_API_KEY=${GEMINI_API_KEY}
 RUN npm run build
 
 # ---------------------------------------------------------------------------
