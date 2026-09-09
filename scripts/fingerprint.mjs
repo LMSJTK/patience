@@ -33,19 +33,16 @@ function readBoard() {
     return null;
   };
 
-  // A card is a positioned div carrying either a face or a back.
-  const cards = Array.from(document.querySelectorAll('main div')).filter(
-    (el) => el.className.includes('rounded-lg') || el.className.includes('rounded-xl')
-  );
-
+  // Cards announce themselves with data-card, so this does not depend on how
+  // they happen to be styled.
   const faces = [];
   const backs = [];
-  for (const el of cards) {
+  for (const el of document.querySelectorAll('main [data-card]')) {
     const b = box(el);
     if (b.w === 0 || b.h === 0) continue;
-    if (el.className.includes('bg-white')) {
-      faces.push({ rank: (el.textContent || '').trim().slice(0, 3), suit: suitOf(el), ...b });
-    } else if (el.querySelector('img') || el.className.includes('from-indigo-500')) {
+    if (el.getAttribute('data-face') === 'up') {
+      faces.push({ rank: el.getAttribute('data-rank'), suit: suitOf(el), ...b });
+    } else {
       backs.push(b);
     }
   }

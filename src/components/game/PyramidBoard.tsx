@@ -4,12 +4,13 @@ import PlayingCard from './PlayingCard';
 import { cn } from '../../lib/utils';
 import { Undo2, RefreshCw } from 'lucide-react';
 import { getRowCol, isCardExposed } from '../../lib/solitaire/pyramid';
-import { WinScreen, useDealSeed, useGameSounds } from './table';
+import { WinScreen, useDealSeed, useGameSounds, useTableMetrics } from './table';
 
-const CARD_WIDTH = 80;
-const CARD_HEIGHT = 112;
-const X_SPACING = 90;
-const Y_SPACING = 45;
+/**
+ * The pyramid is seven rows deep and its widest row is seven cards, but each
+ * sits half over its neighbour, so it needs about four cards' width across.
+ */
+const SHAPE = { columns: 4, deepestColumn: 7 };
 
 export default function PyramidBoard() {
   const { 
@@ -19,6 +20,12 @@ export default function PyramidBoard() {
 
   const dealSeed = useDealSeed();
   const { dealDelayOf } = useGameSounds(usePyramidStore);
+  const { cardWidth, cardHeight, style: tableStyle } = useTableMetrics(SHAPE);
+
+  // Cards overlap by half across a row and by two fifths down the pyramid,
+  // which is what makes the shape read as a pyramid rather than a grid.
+  const xSpacing = Math.round(cardWidth * 1.12);
+  const ySpacing = Math.round(cardHeight * 0.4);
 
   useEffect(() => {
     initGame(dealSeed);
@@ -31,7 +38,7 @@ export default function PyramidBoard() {
   }
 
   return (
-    <div className="w-full max-w-4xl mx-auto flex flex-col gap-8">
+    <div style={tableStyle} className="w-full mx-auto flex flex-col gap-8">
       {/* Controls */}
       <div className="flex justify-end">
         <button 
@@ -58,8 +65,8 @@ export default function PyramidBoard() {
                 key={card.id}
                 className="absolute"
                 style={{
-                  top: row * Y_SPACING,
-                  left: `calc(50% + ${(col - row / 2) * X_SPACING}px)`,
+                  top: row * ySpacing,
+                  left: `calc(50% + ${(col - row / 2) * xSpacing}px)`,
                   transform: 'translateX(-50%)',
                   zIndex: row,
                 }}
@@ -69,7 +76,7 @@ export default function PyramidBoard() {
                     card={card} 
                     dealDelay={dealDelayOf(card.id)}
                     className={cn(
-                      "w-20 h-28 shadow-md transition-all",
+                      "shadow-md transition-all",
                       !isExposed && "brightness-75",
                       isExposed && "cursor-pointer hover:-translate-y-1 hover:shadow-xl",
                       isSelected && "ring-4 ring-yellow-400 ring-inset"

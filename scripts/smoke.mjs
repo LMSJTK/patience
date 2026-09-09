@@ -36,9 +36,8 @@ const readMoves = async () => {
 
 /** Every face-up card currently on the table, top-most last. */
 const faceUpCards = () =>
-  page.$$eval('main div', (nodes) =>
+  page.$$eval('main [data-card][data-face="up"]', (nodes) =>
     nodes
-      .filter((el) => el.className.includes('bg-white') && el.className.includes('rounded'))
       .map((el) => {
         const r = el.getBoundingClientRect();
         return { x: r.x + r.width / 2, y: r.y + r.height / 2, w: r.width };

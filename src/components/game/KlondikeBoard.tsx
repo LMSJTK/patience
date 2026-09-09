@@ -6,7 +6,6 @@ import {
   CardTable,
   DraggableCard,
   DroppableArea,
-  Ladder,
   WinScreen,
   useDealSeed,
   useGameSounds,
@@ -15,15 +14,11 @@ import {
 
 type KlondikeTarget = { type: 'tableau' | 'foundation'; index: number };
 
-/** Seven columns, so cards can sit relatively far apart. */
-const SPACING: Ladder = [16, 22, 28, 28];
-/**
- * Klondike's piles are sized on a three-step scale (h-24/h-28/h-36) while the
- * cards themselves use four steps, so on the narrowest screens a slot is
- * taller than the card in it. Preserved here rather than quietly changed;
- * Phase 2 derives both from one measurement.
- */
-const HEIGHT: Ladder = [96, 112, 144, 144];
+/** Seven columns, and a column can reach about nineteen cards in a long game. */
+const SHAPE = { columns: 7, deepestColumn: 19 };
+
+/** Every pile is one card's worth of space. */
+const slot = { width: 'var(--card-w)', height: 'var(--card-h)' };
 
 export default function KlondikeBoard() {
   const {
@@ -42,7 +37,7 @@ export default function KlondikeBoard() {
 
   const [showSettings, setShowSettings] = useState(false);
   const [finishing, setFinishing] = useState(false);
-  const { cardSpacing, cardHeight } = useTableMetrics(SPACING, HEIGHT);
+  const { cardSpacing, cardHeight, style: tableStyle } = useTableMetrics(SHAPE);
 
   const dealSeed = useDealSeed();
   const { onDrop, dealDelayOf } = useGameSounds(useKlondikeStore, handleDrop);
@@ -75,8 +70,7 @@ export default function KlondikeBoard() {
   return (
     <CardTable<CardLocation, KlondikeTarget>
       onDrop={onDrop}
-      cardSpacing={cardSpacing}
-      className="max-w-6xl"
+      style={tableStyle}
     >
       {/* Controls */}
       <div className="flex justify-between items-center">
@@ -126,14 +120,15 @@ export default function KlondikeBoard() {
         <div className="flex gap-2 sm:gap-4">
           {/* Stock */}
           <div
-            className="w-16 h-24 sm:w-20 sm:h-28 md:w-24 md:h-36 rounded-lg sm:rounded-xl border-2 border-white/20 bg-black/20 cursor-pointer relative"
+            style={slot}
+            className="rounded-xl border-2 border-white/20 bg-black/20 cursor-pointer relative"
             onClick={useKlondikeStore.getState().drawCard}
           >
             {stock.length > 0 && <PlayingCard card={stock[stock.length - 1]} className="absolute inset-0" />}
           </div>
 
           {/* Waste */}
-          <div className="w-16 h-24 sm:w-20 sm:h-28 md:w-24 md:h-36 rounded-lg sm:rounded-xl border-2 border-white/10 relative">
+          <div style={slot} className="rounded-xl border-2 border-white/10 relative">
             {waste.map((card, i) => {
               const offset = Math.min(i * (cardSpacing / 2), cardSpacing);
               const isTop = i === waste.length - 1;
@@ -161,7 +156,8 @@ export default function KlondikeBoard() {
               key={`foundation-${i}`}
               id={`foundation-${i}`}
               data={{ type: 'foundation', index: i } as KlondikeTarget}
-              className="w-16 h-24 sm:w-20 sm:h-28 md:w-24 md:h-36 rounded-lg sm:rounded-xl border-2 border-white/20 bg-black/20 relative"
+              style={slot}
+              className="rounded-xl border-2 border-white/20 bg-black/20 relative"
               onClick={() => selectCard({ type: 'foundation', index: i })}
             >
               {col.map((card) => (
@@ -179,8 +175,11 @@ export default function KlondikeBoard() {
             key={`tableau-${i}`}
             id={`tableau-${i}`}
             data={{ type: 'tableau', index: i } as KlondikeTarget}
-            className="w-16 sm:w-20 md:w-24 rounded-lg sm:rounded-xl border-2 border-white/10 bg-black/10 relative transition-all"
-            style={{ height: col.length > 0 ? (col.length - 1) * cardSpacing + cardHeight : cardHeight }}
+            className="rounded-xl border-2 border-white/10 bg-black/10 relative transition-all"
+            style={{
+              width: 'var(--card-w)',
+              height: col.length > 0 ? (col.length - 1) * cardSpacing + cardHeight : cardHeight,
+            }}
             onClick={() => {
               if (col.length === 0) selectCard({ type: 'tableau', index: i, cardIndex: 0 });
             }}

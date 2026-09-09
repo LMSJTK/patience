@@ -15,6 +15,6 @@ export { useDealSeed } from './useDealSeed';
 export { useGameSounds } from './useGameSounds';
 export type { SoundableStore } from './useGameSounds';
 export { useTableMetrics } from './useTableMetrics';
-export type { Ladder, TableMetrics } from './useTableMetrics';
+export type { TableMetrics, TableShape } from './useTableMetrics';
 export { WinScreen } from './WinScreen';
 export type { WinScreenProps } from './WinScreen';
