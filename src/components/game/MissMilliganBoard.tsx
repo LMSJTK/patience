@@ -54,7 +54,6 @@ export default function MissMilliganBoard() {
   return (
     <CardTable<MissMilliganLocation, MissMilliganTarget>
       onDrop={onDrop}
-      cardSpacing={cardSpacing}
       className="max-w-7xl"
     >
       {/* Controls */}

@@ -61,7 +61,6 @@ export default function FortyThievesBoard() {
   return (
     <CardTable<FortyThievesLocation, FortyThievesTarget>
       onDrop={onDrop}
-      cardSpacing={cardSpacing}
       className="max-w-7xl"
     >
       {/* Controls */}

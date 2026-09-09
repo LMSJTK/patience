@@ -75,7 +75,6 @@ export default function KlondikeBoard() {
   return (
     <CardTable<CardLocation, KlondikeTarget>
       onDrop={onDrop}
-      cardSpacing={cardSpacing}
       className="max-w-6xl"
     >
       {/* Controls */}

@@ -1,5 +1,6 @@
 import { useDraggable } from '@dnd-kit/core';
 import React from 'react';
+import { RETURN_MS, useDraggingCards } from './CardTable';
 import { Card } from '../../../lib/cards';
 import { cn } from '../../../lib/utils';
 import PlayingCard from '../PlayingCard';
@@ -52,13 +53,28 @@ export function DraggableCard<L>({
     disabled: !card.isFaceUp || !canDrag,
   });
 
+  // dnd-kit only reports the card that was grabbed; the rest of the run finds
+  // itself here. The offset lives in CSS custom properties on the table, so
+  // following the pointer costs no renders.
+  const carried = useDraggingCards()?.has(card.id) ?? false;
+
+  const carriedStyle: React.CSSProperties = carried
+    ? {
+        transform: 'translate3d(var(--drag-x, 0px), var(--drag-y, 0px), 0)',
+        // No transition while the pointer has it, so the card tracks exactly;
+        // one afterwards, so a refused card slides home instead of snapping.
+        transition: isDragging ? 'none' : `transform ${RETURN_MS}ms cubic-bezier(0.2, 0.8, 0.2, 1)`,
+        zIndex: 999,
+      }
+    : {};
+
   return (
     <div
       ref={setNodeRef}
       {...listeners}
       {...attributes}
-      className={cn('absolute w-full touch-none', className, isDragging && 'opacity-0')}
-      style={style}
+      className={cn('absolute w-full touch-none', className)}
+      style={{ ...style, ...carriedStyle }}
       onClick={onClick}
     >
       <PlayingCard card={card} dealDelay={dealDelay} />

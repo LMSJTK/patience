@@ -54,7 +54,6 @@ export default function SpiderBoard() {
   return (
     <CardTable<SpiderLocation, SpiderTarget>
       onDrop={onDrop}
-      cardSpacing={cardSpacing}
       className="max-w-7xl"
     >
       {/* Controls */}

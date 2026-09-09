@@ -40,7 +40,6 @@ export default function FreecellBoard() {
   return (
     <CardTable<FreecellLocation, FreecellTarget>
       onDrop={onDrop}
-      cardSpacing={cardSpacing}
       className="max-w-7xl"
     >
       {/* Controls */}
