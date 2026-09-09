@@ -1,4 +1,4 @@
-import React, { forwardRef } from 'react';
+import React, { forwardRef, memo } from 'react';
 import { Card as CardType } from '../../lib/cards';
 import { cn } from '../../lib/utils';
 import { motion, useReducedMotion } from 'motion/react';
@@ -90,9 +90,11 @@ const cornerPip = { width: `calc(${W} * 0.13)`, height: `calc(${W} * 0.13)` };
 const centrePip = { width: `calc(${W} * 0.5)`, height: `calc(${W} * 0.5)` };
 const facePadding = { padding: `calc(${W} * 0.06)` };
 
-const PlayingCard = forwardRef<HTMLDivElement, PlayingCardProps>(
+const PlayingCardInner = forwardRef<HTMLDivElement, PlayingCardProps>(
   ({ card, className, style, isSelected, dealDelay, ...props }, ref) => {
-    const { cardBack } = useGameStore();
+    // Subscribed to the one field this needs. Reading the whole store meant a
+    // card re-rendered whenever anything in it changed, XP included.
+    const cardBack = useGameStore((state) => state.cardBack);
     const reduceMotion = useReducedMotion();
     const transition = reduceMotion ? NO_MOTION : MOVE_TRANSITION;
 
@@ -170,6 +172,34 @@ const PlayingCard = forwardRef<HTMLDivElement, PlayingCardProps>(
   }
 );
 
-PlayingCard.displayName = 'PlayingCard';
+PlayingCardInner.displayName = 'PlayingCard';
+
+function sameStyle(a?: React.CSSProperties, b?: React.CSSProperties): boolean {
+  if (a === b) return true;
+  if (!a || !b) return false;
+  const keys = Object.keys(a) as (keyof React.CSSProperties)[];
+  if (keys.length !== Object.keys(b).length) return false;
+  return keys.every((key) => a[key] === b[key]);
+}
+
+/**
+ * Boards rebuild their style objects on every render, so the default shallow
+ * compare would never match and the memo would never hold. Everything else is
+ * compared by identity, which is conservative: a card whose handler changed
+ * identity re-renders, which is wasteful but never wrong.
+ */
+function samePlayingCard(a: PlayingCardProps, b: PlayingCardProps): boolean {
+  const keys = Object.keys(a) as (keyof PlayingCardProps)[];
+  if (keys.length !== Object.keys(b).length) return false;
+  return keys.every((key) =>
+    key === 'style' ? sameStyle(a.style, b.style) : a[key] === b[key]
+  );
+}
+
+/**
+ * A move changes two piles, but every card on the board used to re-render.
+ * With 104 cards out in a two-deck game that was tens of milliseconds a move.
+ */
+const PlayingCard = memo(PlayingCardInner, samePlayingCard);
 
 export default PlayingCard;
