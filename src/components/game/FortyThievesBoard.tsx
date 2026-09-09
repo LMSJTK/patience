@@ -8,7 +8,6 @@ import {
   CardTable,
   DraggableCard,
   DroppableArea,
-  Ladder,
   WinScreen,
   useDealSeed,
   useGameSounds,
@@ -17,9 +16,11 @@ import {
 
 type FortyThievesTarget = { type: 'tableau' | 'foundation'; index: number };
 
-/** Ten columns of two decks, so cards overlap tightly. */
-const SPACING: Ladder = [12, 16, 20, 24];
-const HEIGHT: Ladder = [72, 96, 112, 144];
+/** Ten columns of two decks. */
+const SHAPE = { columns: 10, deepestColumn: 14 };
+
+/** Every pile is one card's worth of space. */
+const slot = { width: 'var(--card-w)', height: 'var(--card-h)' };
 
 export default function FortyThievesBoard() {
   const {
@@ -38,7 +39,7 @@ export default function FortyThievesBoard() {
   } = useFortyThievesStore();
 
   const [showSettings, setShowSettings] = useState(false);
-  const { cardSpacing, cardHeight } = useTableMetrics(SPACING, HEIGHT);
+  const { cardSpacing, cardHeight, style: tableStyle } = useTableMetrics(SHAPE);
 
   const dealSeed = useDealSeed();
   const { onDrop, dealDelayOf } = useGameSounds(useFortyThievesStore, handleDrop);
@@ -61,7 +62,7 @@ export default function FortyThievesBoard() {
   return (
     <CardTable<FortyThievesLocation, FortyThievesTarget>
       onDrop={onDrop}
-      className="max-w-7xl"
+      style={tableStyle}
     >
       {/* Controls */}
       <div className="flex justify-between items-center">
@@ -102,7 +103,7 @@ export default function FortyThievesBoard() {
           <div className="flex flex-col items-center gap-1 sm:gap-2">
             <div
               className={cn(
-                'relative w-12 h-18 sm:w-16 sm:h-24 md:w-20 md:h-28 lg:w-24 lg:h-36 rounded-lg sm:rounded-xl border-2 border-white/20 bg-black/20',
+                'relative rounded-xl border-2 border-white/20 bg-black/20',
                 stock.length > 0 ? 'cursor-pointer hover:border-white/40' : 'opacity-50'
               )}
               onClick={drawCard}
@@ -115,7 +116,8 @@ export default function FortyThievesBoard() {
           </div>
 
           {/* Waste */}
-          <div className="relative w-12 h-18 sm:w-16 sm:h-24 md:w-20 md:h-28 lg:w-24 lg:h-36 rounded-lg sm:rounded-xl border-2 border-white/10 bg-black/10">
+          <div style={slot}
+              className="relative rounded-xl border-2 border-white/10 bg-black/10">
             {waste.map((card, i) => {
               const isTop = i === waste.length - 1;
               return isTop ? (
@@ -141,7 +143,8 @@ export default function FortyThievesBoard() {
               key={`foundation-${i}`}
               id={`foundation-${i}`}
               data={{ type: 'foundation', index: i } as FortyThievesTarget}
-              className="w-10 h-15 sm:w-14 sm:h-20 md:w-18 md:h-26 lg:w-20 lg:h-28 rounded-lg border-2 border-white/20 bg-black/20 relative"
+              style={{ width: 'calc(var(--card-w) * 0.84)', height: 'calc(var(--card-h) * 0.84)' }}
+              className="rounded-lg border-2 border-white/20 bg-black/20 relative"
               onClick={() => {
                 if (col.length > 0) autoMoveCard({ type: 'foundation', index: i });
               }}
@@ -161,8 +164,8 @@ export default function FortyThievesBoard() {
             key={`tableau-${i}`}
             id={`tableau-${i}`}
             data={{ type: 'tableau', index: i } as FortyThievesTarget}
-            className="w-12 sm:w-16 md:w-20 lg:w-24 rounded-lg sm:rounded-xl border-2 border-white/10 bg-black/10 relative transition-all"
-            style={{ height: col.length > 0 ? (col.length - 1) * cardSpacing + cardHeight : cardHeight }}
+            className="rounded-xl border-2 border-white/10 bg-black/10 relative transition-all"
+            style={{ width: 'var(--card-w)', height: col.length > 0 ? (col.length - 1) * cardSpacing + cardHeight : cardHeight }}
           >
             {col.map((card, j) => {
               const run = col.slice(j);

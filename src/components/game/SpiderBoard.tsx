@@ -8,7 +8,6 @@ import {
   CardTable,
   DraggableCard,
   DroppableArea,
-  Ladder,
   WinScreen,
   useDealSeed,
   useGameSounds,
@@ -17,9 +16,11 @@ import {
 
 type SpiderTarget = { type: 'tableau'; index: number };
 
-/** Ten columns and long cascades, so cards overlap more than in Klondike. */
-const SPACING: Ladder = [12, 16, 20, 24];
-const HEIGHT: Ladder = [72, 96, 112, 144];
+/** Ten columns, and Spider cascades get very long. */
+const SHAPE = { columns: 10, deepestColumn: 24 };
+
+/** Every pile is one card's worth of space. */
+const slot = { width: 'var(--card-w)', height: 'var(--card-h)' };
 
 export default function SpiderBoard() {
   const {
@@ -38,7 +39,7 @@ export default function SpiderBoard() {
   } = useSpiderStore();
 
   const [showSettings, setShowSettings] = useState(false);
-  const { cardSpacing, cardHeight } = useTableMetrics(SPACING, HEIGHT);
+  const { cardSpacing, cardHeight, style: tableStyle } = useTableMetrics(SHAPE);
 
   const dealSeed = useDealSeed();
   const { onDrop, dealDelayOf } = useGameSounds(useSpiderStore, handleDrop);
@@ -54,7 +55,7 @@ export default function SpiderBoard() {
   return (
     <CardTable<SpiderLocation, SpiderTarget>
       onDrop={onDrop}
-      className="max-w-7xl"
+      style={tableStyle}
     >
       {/* Controls */}
       <div className="flex justify-between items-center">
@@ -155,8 +156,8 @@ export default function SpiderBoard() {
             key={`tableau-${i}`}
             id={`tableau-${i}`}
             data={{ type: 'tableau', index: i } as SpiderTarget}
-            className="w-12 sm:w-16 md:w-20 lg:w-24 rounded-lg sm:rounded-xl border-2 border-white/10 bg-black/10 relative transition-all"
-            style={{ height: col.length > 0 ? (col.length - 1) * cardSpacing + cardHeight : cardHeight }}
+            className="rounded-xl border-2 border-white/10 bg-black/10 relative transition-all"
+            style={{ width: 'var(--card-w)', height: col.length > 0 ? (col.length - 1) * cardSpacing + cardHeight : cardHeight }}
           >
             {col.map((card, j) => {
               if (card.isFaceUp) {

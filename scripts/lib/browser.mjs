@@ -39,13 +39,7 @@ export async function useFixedDeal(page, value = 0.4242424242) {
  * single card exists, so including them makes an undealt board look settled.
  */
 function cardGeometry() {
-  const cards = Array.from(document.querySelectorAll('main div')).filter(
-    (el) =>
-      el.className.includes('rounded') &&
-      (el.className.includes('bg-white') ||
-        el.className.includes('from-indigo-500') ||
-        el.querySelector('img'))
-  );
+  const cards = Array.from(document.querySelectorAll('main [data-card]'));
   if (cards.length === 0) return '';
   return cards
     .map((el) => {

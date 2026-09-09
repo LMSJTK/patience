@@ -22,8 +22,10 @@ export const RETURN_MS = 180;
 export interface CardTableProps<L, T> {
   /** Called when a drag ends over a pile. The store decides if it is legal. */
   onDrop: (from: L, to: T) => void;
-  /** Layout classes for the board itself, which differ by column count. */
+  /** Layout classes for the board itself. */
   className?: string;
+  /** Carries the card size down to every card and pile below. */
+  style?: React.CSSProperties;
   children: React.ReactNode;
 }
 
@@ -37,7 +39,7 @@ export interface CardTableProps<L, T> {
  * container, and the cards being carried read them. Nothing re-renders while
  * the pointer moves, and there is only ever one of each card.
  */
-export function CardTable<L, T>({ onDrop, className, children }: CardTableProps<L, T>) {
+export function CardTable<L, T>({ onDrop, className, style, children }: CardTableProps<L, T>) {
   const container = useRef<HTMLDivElement>(null);
   const [carrying, setCarrying] = useState<ReadonlySet<string> | null>(null);
   const release = useRef<number | undefined>(undefined);
@@ -90,6 +92,7 @@ export function CardTable<L, T>({ onDrop, className, children }: CardTableProps<
         <div
           ref={container}
           className={cn('w-full mx-auto flex flex-col gap-4 sm:gap-8 p-2 sm:p-4', className)}
+          style={style}
         >
           {children}
         </div>

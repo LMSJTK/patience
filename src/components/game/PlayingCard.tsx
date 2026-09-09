@@ -27,8 +27,8 @@ export interface PlayingCardProps extends DivProps {
   dealDelay?: number;
 }
 
-const SuitIcon = ({ suit, className }: { suit: string, className?: string }) => {
-  const props = { className: cn("fill-current", className), strokeWidth: 1.5 };
+const SuitIcon = ({ suit, className, style }: { suit: string; className?: string; style?: React.CSSProperties }) => {
+  const props = { className: cn('fill-current', className), style, strokeWidth: 1.5 };
   switch (suit) {
     case 'hearts': return <Heart {...props} />;
     case 'diamonds': return <Diamond {...props} />;
@@ -64,6 +64,32 @@ const DEAL_FROM = { opacity: 0, scale: 0.88, y: -26 } as const;
  */
 const CARD_AT_REST = { opacity: 1, scale: 1, y: 0 } as const;
 
+/**
+ * Every measurement on a card, as a fraction of its width.
+ *
+ * The table decides how big a card is and publishes it as --card-w; the art
+ * inside follows, so a card on a large monitor is genuinely bigger rather than
+ * the same card with more felt around it. The fallbacks are the old fixed
+ * size, so a card rendered outside a table still looks right.
+ */
+const W = 'var(--card-w, 96px)';
+const H = 'var(--card-h, 144px)';
+const cardSize: React.CSSProperties = {
+  width: W,
+  height: H,
+  borderRadius: `calc(${W} * 0.09)`,
+};
+/** Rank and suit in the corners. */
+const corner: React.CSSProperties = {
+  fontSize: `calc(${W} * 0.19)`,
+  width: `calc(${W} * 0.2)`,
+  gap: `calc(${W} * 0.02)`,
+};
+const cornerPip = { width: `calc(${W} * 0.13)`, height: `calc(${W} * 0.13)` };
+/** The big watermark suit behind the face. */
+const centrePip = { width: `calc(${W} * 0.5)`, height: `calc(${W} * 0.5)` };
+const facePadding = { padding: `calc(${W} * 0.06)` };
+
 const PlayingCard = forwardRef<HTMLDivElement, PlayingCardProps>(
   ({ card, className, style, isSelected, dealDelay, ...props }, ref) => {
     const { cardBack } = useGameStore();
@@ -87,16 +113,20 @@ const PlayingCard = forwardRef<HTMLDivElement, PlayingCardProps>(
           ref={ref}
           layoutId={card.id}
           {...motionProps}
+          // A stable hook for tests and the browser scripts, so they do not
+          // have to guess at styling classes to find a card.
+          data-card={card.id}
+          data-face="down"
           className={cn(
-            "w-12 h-18 sm:w-16 sm:h-24 md:w-20 md:h-28 lg:w-24 lg:h-36 rounded-lg sm:rounded-xl border-2 shadow-md cursor-pointer overflow-hidden relative",
+            "border-2 shadow-md cursor-pointer overflow-hidden relative",
             cardBack === 'default' ? "bg-gradient-to-br from-indigo-500 to-purple-700 border-white/10" : "border-transparent",
             className
           )}
-          style={style}
+          style={{ ...cardSize, ...style }}
           {...props}
         >
           {cardBack === 'default' ? (
-            <div className="absolute inset-1 sm:inset-2 border-2 border-white/20 rounded-lg opacity-50 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI4IiBoZWlnaHQ9IjgiPgo8cmVjdCB3aWR0aD0iOCIgaGVpZ2h0PSI4IiBmaWxsPSIjZmZmIiBmaWxsLW9wYWNpdHk9IjAuMSI+PC9yZWN0Pgo8cGF0aCBkPSJNMCAwTDggOFpNOCAwTDAgOFoiIHN0cm9rZT0iI2ZmZiIgc3Ryb2tlLW9wYWNpdHk9IjAuMSIgc3Ryb2tlLXdpZHRoPSIxIj48L3BhdGg+Cjwvc3ZnPg==')] bg-repeat" />
+            <div style={{ inset: `calc(${W} * 0.07)` }} className="absolute border-2 border-white/20 rounded-lg opacity-50 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI4IiBoZWlnaHQ9IjgiPgo8cmVjdCB3aWR0aD0iOCIgaGVpZ2h0PSI4IiBmaWxsPSIjZmZmIiBmaWxsLW9wYWNpdHk9IjAuMSI+PC9yZWN0Pgo8cGF0aCBkPSJNMCAwTDggOFpNOCAwTDAgOFoiIHN0cm9rZT0iI2ZmZiIgc3Ryb2tlLW9wYWNpdHk9IjAuMSIgc3Ryb2tlLXdpZHRoPSIxIj48L3BhdGg+Cjwvc3ZnPg==')] bg-repeat" />
           ) : (
             <img src={cardBack} alt="Card back" className="w-full h-full object-cover pointer-events-none" />
           )}
@@ -109,27 +139,31 @@ const PlayingCard = forwardRef<HTMLDivElement, PlayingCardProps>(
         ref={ref}
         layoutId={card.id}
         {...motionProps}
+        data-card={card.id}
+        data-face="up"
+        data-rank={card.rank}
+        data-suit={card.suit}
         className={cn(
-          "w-12 h-18 sm:w-16 sm:h-24 md:w-20 md:h-28 lg:w-24 lg:h-36 rounded-lg sm:rounded-xl border shadow-md bg-white flex flex-col justify-between p-1 sm:p-2 cursor-pointer relative overflow-hidden",
+          "border shadow-md bg-white flex flex-col justify-between cursor-pointer relative overflow-hidden",
           card.color === 'red' ? 'text-red-600 border-red-200' : card.suit === 'clubs' ? 'text-slate-700 border-slate-200' : 'text-black border-slate-200',
           isSelected && 'ring-2 sm:ring-4 ring-yellow-400 ring-offset-1 sm:ring-offset-2 ring-offset-green-900 z-50',
           className
         )}
-        style={style}
+        style={{ ...cardSize, ...facePadding, ...style }}
         {...props}
       >
-        <div className="text-[10px] sm:text-sm md:text-base lg:text-lg font-bold leading-none flex flex-col items-center w-3 sm:w-4 md:w-6 gap-0 sm:gap-0.5 lg:gap-1">
+        <div style={corner} className="font-bold leading-none flex flex-col items-center">
           <span>{card.rank}</span>
-          <SuitIcon suit={card.suit} className="w-2 h-2 sm:w-3 sm:h-3 md:w-4 md:h-4" />
-        </div>
-        
-        <div className="absolute inset-0 flex items-center justify-center opacity-10 pointer-events-none">
-          <SuitIcon suit={card.suit} className="w-6 h-6 sm:w-10 sm:h-10 md:w-12 md:h-12 lg:w-16 lg:h-16" />
+          <SuitIcon suit={card.suit} style={cornerPip} />
         </div>
 
-        <div className="text-[10px] sm:text-sm md:text-base lg:text-lg font-bold leading-none flex flex-col items-center w-3 sm:w-4 md:w-6 gap-0 sm:gap-0.5 lg:gap-1 self-end rotate-180">
+        <div className="absolute inset-0 flex items-center justify-center opacity-10 pointer-events-none">
+          <SuitIcon suit={card.suit} style={centrePip} />
+        </div>
+
+        <div style={corner} className="font-bold leading-none flex flex-col items-center self-end rotate-180">
           <span>{card.rank}</span>
-          <SuitIcon suit={card.suit} className="w-2 h-2 sm:w-3 sm:h-3 md:w-4 md:h-4" />
+          <SuitIcon suit={card.suit} style={cornerPip} />
         </div>
       </motion.div>
     );

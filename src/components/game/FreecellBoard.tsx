@@ -7,7 +7,6 @@ import {
   CardTable,
   DraggableCard,
   DroppableArea,
-  Ladder,
   WinScreen,
   useDealSeed,
   useGameSounds,
@@ -16,15 +15,17 @@ import {
 
 type FreecellTarget = { type: 'tableau' | 'foundation' | 'freecell'; index: number };
 
-/** Eight columns, everything face up, so cards can sit relatively far apart. */
-const SPACING: Ladder = [16, 22, 28, 28];
-const HEIGHT: Ladder = [72, 96, 112, 144];
+/** Eight columns, everything face up. */
+const SHAPE = { columns: 8, deepestColumn: 14 };
+
+/** Every pile is one card's worth of space. */
+const slot = { width: 'var(--card-w)', height: 'var(--card-h)' };
 
 export default function FreecellBoard() {
   const { freeCells, foundations, tableau, initGame, autoMoveCard, isWon, handleDrop, undo, history } =
     useFreecellStore();
 
-  const { cardSpacing, cardHeight } = useTableMetrics(SPACING, HEIGHT);
+  const { cardSpacing, cardHeight, style: tableStyle } = useTableMetrics(SHAPE);
 
   const dealSeed = useDealSeed();
   const { onDrop, dealDelayOf } = useGameSounds(useFreecellStore, handleDrop);
@@ -40,7 +41,7 @@ export default function FreecellBoard() {
   return (
     <CardTable<FreecellLocation, FreecellTarget>
       onDrop={onDrop}
-      className="max-w-7xl"
+      style={tableStyle}
     >
       {/* Controls */}
       <div className="flex justify-end">
@@ -62,7 +63,8 @@ export default function FreecellBoard() {
               key={`freecell-${i}`}
               id={`freecell-${i}`}
               data={{ type: 'freecell', index: i } as FreecellTarget}
-              className="w-12 h-18 sm:w-16 sm:h-24 md:w-20 md:h-28 lg:w-24 lg:h-36 rounded-lg sm:rounded-xl border-2 border-white/20 bg-black/20 relative"
+              style={slot}
+              className="rounded-xl border-2 border-white/20 bg-black/20 relative"
               onClick={() => {
                 if (card) autoMoveCard({ type: 'freecell', index: i });
               }}
@@ -86,7 +88,8 @@ export default function FreecellBoard() {
               key={`foundation-${i}`}
               id={`foundation-${i}`}
               data={{ type: 'foundation', index: i } as FreecellTarget}
-              className="w-12 h-18 sm:w-16 sm:h-24 md:w-20 md:h-28 lg:w-24 lg:h-36 rounded-lg sm:rounded-xl border-2 border-white/20 bg-black/20 relative"
+              style={slot}
+              className="rounded-xl border-2 border-white/20 bg-black/20 relative"
               onClick={() => {
                 if (col.length > 0) autoMoveCard({ type: 'foundation', index: i });
               }}
@@ -106,8 +109,8 @@ export default function FreecellBoard() {
             key={`tableau-${i}`}
             id={`tableau-${i}`}
             data={{ type: 'tableau', index: i } as FreecellTarget}
-            className="w-12 sm:w-16 md:w-20 lg:w-24 rounded-lg sm:rounded-xl border-2 border-white/10 bg-black/10 relative transition-all"
-            style={{ height: col.length > 0 ? (col.length - 1) * cardSpacing + cardHeight : cardHeight }}
+            className="rounded-xl border-2 border-white/10 bg-black/10 relative transition-all"
+            style={{ width: 'var(--card-w)', height: col.length > 0 ? (col.length - 1) * cardSpacing + cardHeight : cardHeight }}
           >
             {col.map((card, j) => (
               <DraggableCard

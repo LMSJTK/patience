@@ -8,7 +8,6 @@ import {
   CardTable,
   DraggableCard,
   DroppableArea,
-  Ladder,
   WinScreen,
   useDealSeed,
   useGameSounds,
@@ -18,8 +17,10 @@ import {
 type MissMilliganTarget = { type: 'tableau' | 'foundation' | 'pocket'; index?: number };
 
 /** Eight columns of two decks. */
-const SPACING: Ladder = [16, 22, 28, 28];
-const HEIGHT: Ladder = [72, 96, 112, 144];
+const SHAPE = { columns: 8, deepestColumn: 20 };
+
+/** Every pile is one card's worth of space. */
+const slot = { width: 'var(--card-w)', height: 'var(--card-h)' };
 
 export default function MissMilliganBoard() {
   const {
@@ -38,7 +39,7 @@ export default function MissMilliganBoard() {
   } = useMissMilliganStore();
 
   const [showSettings, setShowSettings] = useState(false);
-  const { cardSpacing, cardHeight } = useTableMetrics(SPACING, HEIGHT);
+  const { cardSpacing, cardHeight, style: tableStyle } = useTableMetrics(SHAPE);
 
   const dealSeed = useDealSeed();
   const { onDrop, dealDelayOf } = useGameSounds(useMissMilliganStore, handleDrop);
@@ -54,7 +55,7 @@ export default function MissMilliganBoard() {
   return (
     <CardTable<MissMilliganLocation, MissMilliganTarget>
       onDrop={onDrop}
-      className="max-w-7xl"
+      style={tableStyle}
     >
       {/* Controls */}
       <div className="flex justify-between items-center">
@@ -95,7 +96,7 @@ export default function MissMilliganBoard() {
           <div className="flex flex-col items-center gap-1 sm:gap-2">
             <div
               className={cn(
-                'relative w-12 h-18 sm:w-16 sm:h-24 md:w-20 md:h-28 lg:w-24 lg:h-36 rounded-lg sm:rounded-xl border-2 border-white/20 bg-black/20',
+                'relative rounded-xl border-2 border-white/20 bg-black/20',
                 stock.length > 0 ? 'cursor-pointer hover:border-white/40' : 'opacity-50'
               )}
               onClick={dealCards}
@@ -122,7 +123,8 @@ export default function MissMilliganBoard() {
               <DroppableArea
                 id="pocket"
                 data={{ type: 'pocket' } as MissMilliganTarget}
-                className="relative w-12 h-18 sm:w-16 sm:h-24 md:w-20 md:h-28 lg:w-24 lg:h-36 rounded-lg sm:rounded-xl border-2 border-dashed border-yellow-400/50 bg-black/20"
+                style={slot}
+              className="relative rounded-xl border-2 border-dashed border-yellow-400/50 bg-black/20"
               >
                 {pocket.length === 0 ? (
                   <div className="absolute inset-0 flex items-center justify-center text-yellow-400/50 text-[10px] sm:text-sm font-medium">
@@ -158,7 +160,8 @@ export default function MissMilliganBoard() {
               key={`foundation-${i}`}
               id={`foundation-${i}`}
               data={{ type: 'foundation', index: i } as MissMilliganTarget}
-              className="w-10 h-15 sm:w-14 sm:h-20 md:w-18 md:h-26 lg:w-20 lg:h-28 rounded-lg border-2 border-white/20 bg-black/20 relative"
+              style={{ width: 'calc(var(--card-w) * 0.84)', height: 'calc(var(--card-h) * 0.84)' }}
+              className="rounded-lg border-2 border-white/20 bg-black/20 relative"
               onClick={() => {
                 if (col.length > 0) autoMoveCard({ type: 'foundation', index: i });
               }}
@@ -178,8 +181,8 @@ export default function MissMilliganBoard() {
             key={`tableau-${i}`}
             id={`tableau-${i}`}
             data={{ type: 'tableau', index: i } as MissMilliganTarget}
-            className="w-12 sm:w-16 md:w-20 lg:w-24 rounded-lg sm:rounded-xl border-2 border-white/10 bg-black/10 relative transition-all"
-            style={{ height: col.length > 0 ? (col.length - 1) * cardSpacing + cardHeight : cardHeight }}
+            className="rounded-xl border-2 border-white/10 bg-black/10 relative transition-all"
+            style={{ width: 'var(--card-w)', height: col.length > 0 ? (col.length - 1) * cardSpacing + cardHeight : cardHeight }}
           >
             {col.map((card, j) => (
               <DraggableCard
