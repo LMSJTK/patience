@@ -20,5 +20,7 @@ export { useGameSounds } from './useGameSounds';
 export type { SoundableStore } from './useGameSounds';
 export { useTableMetrics } from './useTableMetrics';
 export type { TableMetrics, TableShape } from './useTableMetrics';
+export { WinCascade } from './WinCascade';
+export type { WinCascadeProps } from './WinCascade';
 export { WinScreen } from './WinScreen';
 export type { WinScreenProps } from './WinScreen';

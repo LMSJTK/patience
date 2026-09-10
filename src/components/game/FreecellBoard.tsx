@@ -49,7 +49,7 @@ export default function FreecellBoard() {
   }, [initGame, dealSeed]);
 
   if (isWon) {
-    return <WinScreen xp={100} onPlayAgain={() => initGame()} />;
+    return <WinScreen xp={100} onNewDeal={() => initGame()} onReplay={() => initGame(seed)} />;
   }
 
   const canFinish = canAutoComplete();

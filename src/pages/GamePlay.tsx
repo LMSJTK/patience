@@ -6,6 +6,7 @@ import { useAuthStore } from '../store/useAuthStore';
 import { db } from '../lib/firebase';
 import { collection, addDoc, doc, getDoc, setDoc } from 'firebase/firestore';
 import { checkAndAwardAchievements } from '../lib/achievements';
+import { formatTime, useSessionStore } from '../store/useSessionStore';
 import KlondikeBoard from '../components/game/KlondikeBoard';
 import FreecellBoard from '../components/game/FreecellBoard';
 import SpiderBoard from '../components/game/SpiderBoard';
@@ -78,6 +79,7 @@ export default function GamePlay() {
     } else if (gameState.historyLength === 0) {
       setIsPlaying(false);
       setTime(0);
+      useSessionStore.getState().startNewGame();
     }
   }, [gameState.historyLength, gameState.isWon]);
 
@@ -94,8 +96,14 @@ export default function GamePlay() {
     };
   }, [isPlaying, gameState.isWon]);
 
+  // The clock is the page's, but the win panel is inside the board, so it is
+  // published where both can reach it.
   useEffect(() => {
-    if (gameState.isWon && time > 0) {
+    useSessionStore.getState().setSeconds(time);
+  }, [time]);
+
+  useEffect(() => {
+    if (gameState.isWon) {
       handleWin(time);
     }
   }, [gameState.isWon]);
@@ -115,8 +123,20 @@ export default function GamePlay() {
 
     // Update local stats
     const currentBest = stats[gameId].highScores[difficulty];
-    const isNewBest = !currentBest || finalTime < currentBest;
-    
+    // A game the clock never started on is shown but not recorded: writing a
+    // zero here would leave a best time nothing could ever beat.
+    const isNewBest = finalTime > 0 && (!currentBest || finalTime < currentBest);
+
+    // The panel wants the record as it stood before this game, so capture it
+    // here rather than letting it read the value this win is about to replace.
+    useSessionStore.getState().recordWin({
+      seconds: finalTime,
+      moves: gameState.historyLength,
+      // A high score of zero is how this store spells "never won this one",
+      // which is what the isNewBest test above reads it as too.
+      previousBest: currentBest || null,
+    });
+
     if (isNewBest) {
       updateStats(gameId, {
         highScores: {
@@ -153,12 +173,6 @@ export default function GamePlay() {
         console.error("Error saving win to Firebase:", error);
       }
     }
-  };
-
-  const formatTime = (seconds: number) => {
-    const m = Math.floor(seconds / 60);
-    const s = seconds % 60;
-    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
   };
 
   return (

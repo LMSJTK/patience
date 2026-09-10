@@ -36,6 +36,7 @@ export default function KlondikeBoard() {
     history,
     canAutoComplete,
     seed,
+    drawCount,
   } = useKlondikeStore();
 
   const [showSettings, setShowSettings] = useState(false);
@@ -50,7 +51,11 @@ export default function KlondikeBoard() {
   }, [initGame, dealSeed]);
 
   if (isWon) {
-    return <WinScreen xp={100} onPlayAgain={() => initGame(useKlondikeStore.getState().drawCount)} />;
+    return <WinScreen
+        xp={100}
+        onNewDeal={() => initGame(drawCount)}
+        onReplay={() => initGame(drawCount, seed)}
+      />;
   }
 
   const canFinish = canAutoComplete();
@@ -72,7 +77,7 @@ export default function KlondikeBoard() {
           {showSettings && (
             <div className="flex items-center gap-2 sm:gap-4 bg-slate-800 px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg">
               <select
-                value={useKlondikeStore.getState().drawCount}
+                value={drawCount}
                 onChange={(e) => initGame(Number(e.target.value) as 1 | 3)}
                 className="bg-slate-700 text-white px-2 py-1 rounded text-xs sm:text-sm"
               >

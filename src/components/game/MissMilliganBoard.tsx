@@ -36,6 +36,7 @@ export default function MissMilliganBoard() {
     handleDrop,
     undo,
     history,
+    seed,
   } = useMissMilliganStore();
 
   const [showSettings, setShowSettings] = useState(false);
@@ -49,7 +50,11 @@ export default function MissMilliganBoard() {
   }, [initGame, dealSeed]);
 
   if (isWon) {
-    return <WinScreen xp={250} onPlayAgain={() => initGame(isTabbyCat)} />;
+    return <WinScreen
+        xp={250}
+        onNewDeal={() => initGame(isTabbyCat)}
+        onReplay={() => initGame(isTabbyCat, seed)}
+      />;
   }
 
   return (

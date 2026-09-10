@@ -36,6 +36,7 @@ export default function SpiderBoard() {
     handleDrop,
     undo,
     history,
+    seed,
   } = useSpiderStore();
 
   const [showSettings, setShowSettings] = useState(false);
@@ -49,7 +50,11 @@ export default function SpiderBoard() {
   }, [initGame, dealSeed]);
 
   if (isWon) {
-    return <WinScreen xp={100 * suitCount} onPlayAgain={() => initGame(suitCount, isRelaxed)} />;
+    return <WinScreen
+        xp={100 * suitCount}
+        onNewDeal={() => initGame(suitCount, isRelaxed)}
+        onReplay={() => initGame(suitCount, isRelaxed, seed)}
+      />;
   }
 
   return (
