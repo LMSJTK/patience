@@ -1,4 +1,4 @@
-import { FastForward, Settings, Undo2 } from 'lucide-react';
+import { Settings, Undo2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { CardLocation, useKlondikeStore } from '../../store/useKlondikeStore';
 import PlayingCard from './PlayingCard';
@@ -6,7 +6,9 @@ import {
   CardTable,
   DraggableCard,
   DroppableArea,
+  FinishButton,
   WinScreen,
+  useAutoComplete,
   useDealSeed,
   useGameSounds,
   useTableMetrics,
@@ -33,33 +35,19 @@ export default function KlondikeBoard() {
     undo,
     history,
     canAutoComplete,
+    seed,
   } = useKlondikeStore();
 
   const [showSettings, setShowSettings] = useState(false);
-  const [finishing, setFinishing] = useState(false);
   const { cardHeight, cardSpacing, fanFor, style: tableStyle } = useTableMetrics(SHAPE);
 
   const dealSeed = useDealSeed();
   const { onDrop, dealDelayOf } = useGameSounds(useKlondikeStore, handleDrop);
+  const { finishing, start: startFinishing } = useAutoComplete(useKlondikeStore, seed);
 
   useEffect(() => {
     initGame(1, dealSeed);
   }, [initGame, dealSeed]);
-
-  // Play the rest out one move at a time. Slower than the move animation on
-  // purpose: the cascade is the reward for winning, so it should be watchable.
-  useEffect(() => {
-    if (!finishing) return;
-    const id = window.setInterval(() => {
-      if (!useKlondikeStore.getState().autoCompleteStep()) setFinishing(false);
-    }, 130);
-    return () => window.clearInterval(id);
-  }, [finishing]);
-
-  // A new deal cancels a finish that is still running.
-  useEffect(() => {
-    setFinishing(false);
-  }, [dealSeed]);
 
   if (isWon) {
     return <WinScreen xp={100} onPlayAgain={() => initGame(useKlondikeStore.getState().drawCount)} />;
@@ -95,16 +83,7 @@ export default function KlondikeBoard() {
           )}
         </div>
         <div className="flex gap-2 sm:gap-4">
-          {canFinish && (
-            <button
-              onClick={() => setFinishing(true)}
-              disabled={finishing}
-              className="flex items-center gap-2 px-3 py-1.5 sm:px-4 sm:py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-500 disabled:opacity-60 transition-colors text-xs sm:text-sm font-medium"
-            >
-              <FastForward className="w-3 h-3 sm:w-4 sm:h-4" />
-              {finishing ? 'Finishing…' : 'Finish'}
-            </button>
-          )}
+          {canFinish && <FinishButton finishing={finishing} onClick={startFinishing} />}
           <button
           onClick={undo}
           disabled={history.length === 0}

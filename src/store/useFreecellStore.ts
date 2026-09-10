@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { Card, createDeck, shuffleDeck } from '../lib/cards';
 import { mulberry32, randomSeed } from '../lib/rng';
 import { canMoveToFoundation, canMoveToTableau, isValidSequence, getMaxMoveCount } from '../lib/solitaire/freecell';
+import { nextAutoMove, willAutoCompleteClear } from '../lib/solitaire/freecellAuto';
 import { useGameStore } from './useGameStore';
 
 export type FreecellLocation = 
@@ -35,6 +36,10 @@ interface FreecellState {
   autoMoveCard: (location: FreecellLocation) => void;
   undo: () => void;
   checkWin: () => void;
+  /** True when pressing Finish would actually finish the game. */
+  canAutoComplete: () => boolean;
+  /** Play one forced move. False when there is nothing left to do. */
+  autoCompleteStep: () => boolean;
 }
 
 const cloneState = (state: Partial<FreecellState>): GameStateSnapshot => ({
@@ -244,5 +249,35 @@ export const useFreecellStore = create<FreecellState>((set, get) => ({
       set({ isWon: true, xpAwarded: true });
       useGameStore.getState().addXp('freecell', 100);
     }
+  },
+
+  canAutoComplete: () => {
+    const state = get();
+    if (state.isWon) return false;
+    // Simulated in full rather than guessed at, so the button never appears
+    // on a board it cannot actually finish.
+    return willAutoCompleteClear(state);
+  },
+
+  autoCompleteStep: () => {
+    const state = get();
+    if (state.isWon) return false;
+
+    const move = nextAutoMove(state);
+    if (!move) return false;
+
+    const from: FreecellLocation =
+      move.kind === 'unblock'
+        ? { type: 'tableau', index: move.from, cardIndex: state.tableau[move.from].length - 1 }
+        : move.from.type === 'freecell'
+          ? { type: 'freecell', index: move.from.index }
+          : { type: 'tableau', index: move.from.index, cardIndex: state.tableau[move.from.index].length - 1 };
+
+    if (move.kind === 'toFoundation') {
+      get().handleDrop(from, { type: 'foundation', index: move.foundation });
+    } else {
+      get().handleDrop(from, { type: move.to.type, index: move.to.index });
+    }
+    return true;
   }
 }));

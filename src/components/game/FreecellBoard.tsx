@@ -7,7 +7,9 @@ import {
   CardTable,
   DraggableCard,
   DroppableArea,
+  FinishButton,
   WinScreen,
+  useAutoComplete,
   useDealSeed,
   useGameSounds,
   useTableMetrics,
@@ -22,13 +24,25 @@ const SHAPE = { columns: 8, typicalColumn: 10 };
 const slot = { width: 'var(--card-w)', height: 'var(--card-h)' };
 
 export default function FreecellBoard() {
-  const { freeCells, foundations, tableau, initGame, autoMoveCard, isWon, handleDrop, undo, history } =
-    useFreecellStore();
+  const {
+    freeCells,
+    foundations,
+    tableau,
+    initGame,
+    autoMoveCard,
+    isWon,
+    handleDrop,
+    undo,
+    history,
+    canAutoComplete,
+    seed,
+  } = useFreecellStore();
 
   const { cardHeight, fanFor, style: tableStyle } = useTableMetrics(SHAPE);
 
   const dealSeed = useDealSeed();
   const { onDrop, dealDelayOf } = useGameSounds(useFreecellStore, handleDrop);
+  const { finishing, start: startFinishing } = useAutoComplete(useFreecellStore, seed);
 
   useEffect(() => {
     initGame(dealSeed);
@@ -38,13 +52,16 @@ export default function FreecellBoard() {
     return <WinScreen xp={100} onPlayAgain={() => initGame()} />;
   }
 
+  const canFinish = canAutoComplete();
+
   return (
     <CardTable<FreecellLocation, FreecellTarget>
       onDrop={onDrop}
       style={tableStyle}
     >
       {/* Controls */}
-      <div className="flex justify-end">
+      <div className="flex justify-end gap-2 sm:gap-4">
+        {canFinish && <FinishButton finishing={finishing} onClick={startFinishing} />}
         <button
           onClick={undo}
           disabled={history.length === 0}
