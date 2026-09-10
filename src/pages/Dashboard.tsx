@@ -5,7 +5,7 @@ import { useDailyStore } from '../store/useDailyStore';
 import { challengeHref, challengesFor, todayKey } from '../lib/daily';
 import { useAuthStore } from '../store/useAuthStore';
 import { signInWithGoogle, logOut } from '../lib/firebase';
-import { Trophy, Star, Play, Settings, Image as ImageIcon, Medal, Users, LogIn, LogOut, Check, Flame } from 'lucide-react';
+import { Trophy, Star, Play, Settings, Image as ImageIcon, Medal, Users, LogIn, LogOut, Check, Flame, BarChart3 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import SettingsModal from '../components/SettingsModal';
 import FriendsModal from '../components/FriendsModal';
@@ -204,10 +204,18 @@ export default function Dashboard() {
           </section>
 
           <section>
-            <h2 className="text-2xl font-semibold mb-6 flex items-center gap-2">
-              <Medal className="w-6 h-6 text-amber-400" />
-              Best Times
-            </h2>
+            <div className="mb-6 flex items-center justify-between gap-4">
+              <h2 className="text-2xl font-semibold flex items-center gap-2">
+                <Medal className="w-6 h-6 text-amber-400" />
+                Best Times
+              </h2>
+              <Link
+                to="/stats"
+                className="flex items-center gap-1.5 text-sm text-indigo-400 transition-colors hover:text-indigo-300"
+              >
+                <BarChart3 className="h-4 w-4" /> All statistics
+              </Link>
+            </div>
             <div className="bg-slate-800 rounded-2xl p-6 border border-slate-700 space-y-6">
               {GAMES.slice(0, 4).map((game) => (
                 <div key={game.id} className="space-y-2">

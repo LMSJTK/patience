@@ -8,6 +8,7 @@ import { collection, addDoc, doc, getDoc, setDoc } from 'firebase/firestore';
 import { checkAndAwardAchievements } from '../lib/achievements';
 import { formatTime, useSessionStore } from '../store/useSessionStore';
 import { useDailyStore } from '../store/useDailyStore';
+import { useRecordStore } from '../store/useRecordStore';
 import { DAILY_XP, Difficulty } from '../lib/daily';
 import { useSearchParams } from 'react-router-dom';
 import KlondikeBoard from '../components/game/KlondikeBoard';
@@ -83,6 +84,7 @@ export default function GamePlay() {
   useEffect(() => {
     if (gameState.moves > 0 && !gameState.isWon && !isPlaying) {
       setIsPlaying(true);
+      if (gameId) useRecordStore.getState().start(gameId, currentDifficulty(gameId));
     } else if (gameState.moves === 0) {
       setIsPlaying(false);
       setTime(0);
@@ -115,19 +117,25 @@ export default function GamePlay() {
     }
   }, [gameState.isWon]);
 
+  /**
+   * The tier a game is being played at, from its own settings — so a
+   * draw-three win is never filed next to a draw-one one.
+   */
+  const currentDifficulty = (game: GameType): Difficulty => {
+    if (game === 'spider') {
+      const suits = useSpiderStore.getState().suitCount;
+      return suits === 1 ? 'easy' : suits === 2 ? 'medium' : 'hard';
+    }
+    if (game === 'klondike') {
+      return useKlondikeStore.getState().drawCount === 1 ? 'easy' : 'hard';
+    }
+    return 'medium';
+  };
+
   const handleWin = async (finalTime: number) => {
     if (!gameId) return;
     
-    // The game's own settings decide the tier a time is recorded under, so a
-    // draw-three win is never filed next to a draw-one one.
-    let difficulty: Difficulty = 'medium';
-    if (gameId === 'spider') {
-      const suitCount = useSpiderStore.getState().suitCount;
-      difficulty = suitCount === 1 ? 'easy' : suitCount === 2 ? 'medium' : 'hard';
-    } else if (gameId === 'klondike') {
-      const drawCount = useKlondikeStore.getState().drawCount;
-      difficulty = drawCount === 1 ? 'easy' : 'hard';
-    }
+    const difficulty = currentDifficulty(gameId);
 
     // Update local stats
     const currentBest = stats[gameId].highScores[difficulty];
@@ -143,6 +151,11 @@ export default function GamePlay() {
       // A high score of zero is how this store spells "never won this one",
       // which is what the isNewBest test above reads it as too.
       previousBest: currentBest || null,
+    });
+
+    useRecordStore.getState().win(gameId, difficulty, {
+      seconds: finalTime,
+      moves: gameState.moves,
     });
 
     // A daily challenge pays out once, the first time it is won.
