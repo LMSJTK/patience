@@ -97,6 +97,19 @@ const centrePip = {
 };
 const facePadding = { padding: `calc(${W} * ${geometry.FACE_PADDING})` };
 
+/**
+ * How long a card takes to turn over.
+ *
+ * Both faces live in one node and the node rotates, so the card you were
+ * looking at is the card that turns. Swapping one component tree for another
+ * cannot be animated at all: React replaces the element and the browser has
+ * nothing to interpolate from.
+ */
+const FLIP_MS = 200;
+
+/** Deep enough to read as a card turning, shallow enough not to fish-eye it. */
+const PERSPECTIVE = `calc(${W} * 4)`;
+
 const PlayingCardInner = forwardRef<HTMLDivElement, PlayingCardProps>(
   ({ card, className, style, isSelected, dealDelay, ...props }, ref) => {
     // Subscribed to the one field this needs. Reading the whole store meant a
@@ -116,63 +129,89 @@ const PlayingCardInner = forwardRef<HTMLDivElement, PlayingCardProps>(
         }
       : { animate: CARD_AT_REST, transition };
 
-    if (!card.isFaceUp) {
-      return (
-        <motion.div
-          ref={ref}
-          layoutId={card.id}
-          {...motionProps}
-          // A stable hook for tests and the browser scripts, so they do not
-          // have to guess at styling classes to find a card.
-          data-card={card.id}
-          data-face="down"
-          className={cn(
-            "border-2 shadow-md cursor-pointer overflow-hidden relative",
-            cardBack === 'default' ? "bg-gradient-to-br from-indigo-500 to-purple-700 border-white/10" : "border-transparent",
-            className
-          )}
-          style={{ ...cardSize, ...style }}
-          {...props}
-        >
-          {cardBack === 'default' ? (
-            <div style={{ inset: `calc(${W} * ${geometry.BACK_INSET})` }} className="absolute border-2 border-white/20 rounded-lg opacity-50 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI4IiBoZWlnaHQ9IjgiPgo8cmVjdCB3aWR0aD0iOCIgaGVpZ2h0PSI4IiBmaWxsPSIjZmZmIiBmaWxsLW9wYWNpdHk9IjAuMSI+PC9yZWN0Pgo8cGF0aCBkPSJNMCAwTDggOFpNOCAwTDAgOFoiIHN0cm9rZT0iI2ZmZiIgc3Ryb2tlLW9wYWNpdHk9IjAuMSIgc3Ryb2tlLXdpZHRoPSIxIj48L3BhdGg+Cjwvc3ZnPg==')] bg-repeat" />
-          ) : (
-            <img src={cardBack} alt="Card back" className="w-full h-full object-cover pointer-events-none" />
-          )}
-        </motion.div>
-      );
-    }
+    const radius = cardSize.borderRadius;
 
     return (
       <motion.div
         ref={ref}
         layoutId={card.id}
         {...motionProps}
+        // A stable hook for tests and the browser scripts, so they do not have
+        // to guess at styling classes to find a card. Rank and suit are absent
+        // while a card is face down: what the player cannot see should not be
+        // sitting in the DOM for anyone who opens the inspector.
         data-card={card.id}
-        data-face="up"
-        data-rank={card.rank}
-        data-suit={card.suit}
+        data-face={card.isFaceUp ? 'up' : 'down'}
+        {...(card.isFaceUp ? { 'data-rank': card.rank, 'data-suit': card.suit } : {})}
         className={cn(
-          "border shadow-md bg-white flex flex-col justify-between cursor-pointer relative overflow-hidden",
-          card.color === 'red' ? 'text-red-600 border-red-200' : card.suit === 'clubs' ? 'text-slate-700 border-slate-200' : 'text-black border-slate-200',
+          'relative shadow-md cursor-pointer',
           isSelected && 'ring-2 sm:ring-4 ring-yellow-400 ring-offset-1 sm:ring-offset-2 ring-offset-green-900 z-50',
           className
         )}
-        style={{ ...cardSize, ...facePadding, ...style }}
+        style={{ ...cardSize, perspective: PERSPECTIVE, ...style }}
         {...props}
       >
-        <div style={corner} className="font-bold leading-none flex flex-col items-center">
-          <span>{card.rank}</span>
-          <SuitIcon suit={card.suit} style={cornerPip} />
-        </div>
+        <div
+          className="absolute inset-0"
+          style={{
+            transformStyle: 'preserve-3d',
+            transform: card.isFaceUp ? 'rotateY(0deg)' : 'rotateY(180deg)',
+            transition: reduceMotion
+              ? undefined
+              : `transform ${FLIP_MS}ms cubic-bezier(0.2, 0.8, 0.2, 1)`,
+          }}
+        >
+          {/* The face. Only built once the card is turned up, so a hidden card
+              gives nothing away, and both faces are present through the turn. */}
+          {card.isFaceUp && (
+            <div
+              className={cn(
+                'absolute inset-0 border bg-white flex flex-col justify-between overflow-hidden',
+                card.color === 'red'
+                  ? 'text-red-600 border-red-200'
+                  : card.suit === 'clubs'
+                    ? 'text-slate-700 border-slate-200'
+                    : 'text-black border-slate-200'
+              )}
+              style={{ backfaceVisibility: 'hidden', borderRadius: radius, ...facePadding }}
+            >
+              <div style={corner} className="font-bold leading-none flex flex-col items-center">
+                <span>{card.rank}</span>
+                <SuitIcon suit={card.suit} style={cornerPip} />
+              </div>
 
-        <div className="absolute inset-0 flex items-center justify-center opacity-10 pointer-events-none">
-          <SuitIcon suit={card.suit} style={centrePip} />
-        </div>
+              <div className="absolute inset-0 flex items-center justify-center opacity-10 pointer-events-none">
+                <SuitIcon suit={card.suit} style={centrePip} />
+              </div>
 
-        <div style={corner} className="font-bold leading-none flex flex-col items-center self-end rotate-180">
-          <span>{card.rank}</span>
-          <SuitIcon suit={card.suit} style={cornerPip} />
+              <div style={corner} className="font-bold leading-none flex flex-col items-center self-end rotate-180">
+                <span>{card.rank}</span>
+                <SuitIcon suit={card.suit} style={cornerPip} />
+              </div>
+            </div>
+          )}
+
+          {/* The back, always built: it is what the far side of the turn shows,
+              and it carries no information about the card. */}
+          <div
+            className={cn(
+              'absolute inset-0 border-2 overflow-hidden',
+              cardBack === 'default'
+                ? 'bg-gradient-to-br from-indigo-500 to-purple-700 border-white/10'
+                : 'border-transparent'
+            )}
+            style={{
+              backfaceVisibility: 'hidden',
+              transform: 'rotateY(180deg)',
+              borderRadius: radius,
+            }}
+          >
+            {cardBack === 'default' ? (
+              <div style={{ inset: `calc(${W} * ${geometry.BACK_INSET})` }} className="absolute border-2 border-white/20 rounded-lg opacity-50 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI4IiBoZWlnaHQ9IjgiPgo8cmVjdCB3aWR0aD0iOCIgaGVpZ2h0PSI4IiBmaWxsPSIjZmZmIiBmaWxsLW9wYWNpdHk9IjAuMSI+PC9yZWN0Pgo8cGF0aCBkPSJNMCAwTDggOFpNOCAwTDAgOFoiIHN0cm9rZT0iI2ZmZiIgc3Ryb2tlLW9wYWNpdHk9IjAuMSIgc3Ryb2tlLXdpZHRoPSIxIj48L3BhdGg+Cjwvc3ZnPg==')] bg-repeat" />
+            ) : (
+              <img src={cardBack} alt="" className="w-full h-full object-cover pointer-events-none" />
+            )}
+          </div>
         </div>
       </motion.div>
     );
@@ -190,6 +229,20 @@ function sameStyle(a?: React.CSSProperties, b?: React.CSSProperties): boolean {
 }
 
 /**
+ * A card is the same card if it is the same card.
+ *
+ * Not merely the same object: a store that turns a card over by setting the
+ * flag where it stands leaves the object identical, and comparing by identity
+ * alone would then decide nothing had changed and never redraw it. The stores
+ * replace cards rather than mutate them, but this is the place where getting
+ * that wrong stops being a style question and starts being an invisible bug,
+ * so it does not depend on them getting it right.
+ */
+function sameCard(a: CardType, b: CardType): boolean {
+  return a === b || (a.id === b.id && a.isFaceUp === b.isFaceUp);
+}
+
+/**
  * Boards rebuild their style objects on every render, so the default shallow
  * compare would never match and the memo would never hold. Everything else is
  * compared by identity, which is conservative: a card whose handler changed
@@ -198,9 +251,11 @@ function sameStyle(a?: React.CSSProperties, b?: React.CSSProperties): boolean {
 function samePlayingCard(a: PlayingCardProps, b: PlayingCardProps): boolean {
   const keys = Object.keys(a) as (keyof PlayingCardProps)[];
   if (keys.length !== Object.keys(b).length) return false;
-  return keys.every((key) =>
-    key === 'style' ? sameStyle(a.style, b.style) : a[key] === b[key]
-  );
+  return keys.every((key) => {
+    if (key === 'style') return sameStyle(a.style, b.style);
+    if (key === 'card') return sameCard(a.card, b.card);
+    return a[key] === b[key];
+  });
 }
 
 /**

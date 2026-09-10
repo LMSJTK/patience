@@ -59,3 +59,21 @@ export function shuffleDeck(deck: Card[], rng: Rng = Math.random): Card[] {
   }
   return newDeck;
 }
+
+/**
+ * The same card, face up.
+ *
+ * A new object rather than a flag flipped in place. The card being turned over
+ * is already on screen, and React decides whether to redraw it by comparing
+ * what it was given last time with what it is given now — so a card mutated
+ * where it stands looks unchanged and is never redrawn. Returns the card
+ * itself when it is face up already, so nothing re-renders for no reason.
+ */
+export function faceUp(card: Card): Card {
+  return card.isFaceUp ? card : { ...card, isFaceUp: true };
+}
+
+/** Turn the top card of a pile face up. The pile is expected to be a copy. */
+export function revealTop(pile: Card[]): void {
+  if (pile.length > 0) pile[pile.length - 1] = faceUp(pile[pile.length - 1]);
+}

@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { Card, createDeck, shuffleDeck } from '../lib/cards';
+import { Card, createDeck, revealTop, shuffleDeck } from '../lib/cards';
 import { mulberry32, randomSeed } from '../lib/rng';
 import { canMoveToFoundation, canMoveToTableau } from '../lib/solitaire/klondike';
 import { nextAutoMove, willAutoCompleteClear } from '../lib/solitaire/klondikeAuto';
@@ -220,10 +220,7 @@ export const useKlondikeStore = create<KlondikeState>((set, get) => ({
           newWaste.pop();
         } else if (from.type === 'tableau') {
           newTableau[from.index] = newTableau[from.index].slice(0, from.cardIndex);
-          const col = newTableau[from.index];
-          if (col.length > 0 && !col[col.length - 1].isFaceUp) {
-            col[col.length - 1].isFaceUp = true;
-          }
+          revealTop(newTableau[from.index]);
         } else if (from.type === 'foundation') {
           newFoundations[from.index].pop();
         }

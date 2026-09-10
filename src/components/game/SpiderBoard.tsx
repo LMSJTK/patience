@@ -164,34 +164,27 @@ export default function SpiderBoard() {
             className="rounded-xl border-2 border-white/10 bg-black/10 relative transition-all"
             style={{ width: 'var(--card-w)', height: col.length > 0 ? (col.length - 1) * fanFor(col.length) + cardHeight : cardHeight }}
           >
-            {col.map((card, j) => {
-              if (card.isFaceUp) {
-                return (
-                  <DraggableCard
-                    key={card.id}
-                    card={card}
-                    location={{ type: 'tableau', index: i, cardIndex: j } as SpiderLocation}
-                    cardsToDrag={col.slice(j)}
-                    canDrag={isValidSpiderSequence(col.slice(j))}
-                    dealDelay={dealDelayOf(card.id)}
-                    style={{ top: j * fanFor(col.length), zIndex: j }}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      autoMoveCard({ type: 'tableau', index: i, cardIndex: j });
-                    }}
-                  />
-                );
-              }
-              return (
-                <PlayingCard
-                  key={card.id}
-                  card={card}
-                  className="absolute w-full"
-                  dealDelay={dealDelayOf(card.id)}
-                  style={{ top: j * fanFor(col.length), zIndex: j }}
-                />
-              );
-            })}
+            {/* Face up or face down, a tableau card is the same element, so a
+                card that turns over rotates rather than being replaced. */}
+            {col.map((card, j) => (
+              <DraggableCard
+                key={card.id}
+                card={card}
+                location={{ type: 'tableau', index: i, cardIndex: j } as SpiderLocation}
+                cardsToDrag={col.slice(j)}
+                canDrag={card.isFaceUp && isValidSpiderSequence(col.slice(j))}
+                dealDelay={dealDelayOf(card.id)}
+                style={{ top: j * fanFor(col.length), zIndex: j }}
+                onClick={
+                  card.isFaceUp
+                    ? (e) => {
+                        e.stopPropagation();
+                        autoMoveCard({ type: 'tableau', index: i, cardIndex: j });
+                      }
+                    : undefined
+                }
+              />
+            ))}
           </DroppableArea>
         ))}
       </div>

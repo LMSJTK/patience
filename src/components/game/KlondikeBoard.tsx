@@ -168,33 +168,28 @@ export default function KlondikeBoard() {
               if (col.length === 0) selectCard({ type: 'tableau', index: i, cardIndex: 0 });
             }}
           >
-            {col.map((card, j) => {
-              if (card.isFaceUp) {
-                return (
-                  <DraggableCard
-                    key={card.id}
-                    card={card}
-                    location={{ type: 'tableau', index: i, cardIndex: j } as CardLocation}
-                    cardsToDrag={col.slice(j)}
-                    dealDelay={dealDelayOf(card.id)}
-                    style={{ top: j * fanFor(col.length), zIndex: j }}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      selectCard({ type: 'tableau', index: i, cardIndex: j });
-                    }}
-                  />
-                );
-              }
-              return (
-                <PlayingCard
-                  key={card.id}
-                  card={card}
-                  className="absolute w-full"
-                  dealDelay={dealDelayOf(card.id)}
-                  style={{ top: j * fanFor(col.length), zIndex: j }}
-                />
-              );
-            })}
+            {/* Face up or face down, a tableau card is the same element. It has
+                to be: a card that turns over is animated by rotating the node
+                you are already looking at, and swapping one component for
+                another replaces that node instead. */}
+            {col.map((card, j) => (
+              <DraggableCard
+                key={card.id}
+                card={card}
+                location={{ type: 'tableau', index: i, cardIndex: j } as CardLocation}
+                cardsToDrag={col.slice(j)}
+                dealDelay={dealDelayOf(card.id)}
+                style={{ top: j * fanFor(col.length), zIndex: j }}
+                onClick={
+                  card.isFaceUp
+                    ? (e) => {
+                        e.stopPropagation();
+                        selectCard({ type: 'tableau', index: i, cardIndex: j });
+                      }
+                    : undefined
+                }
+              />
+            ))}
           </DroppableArea>
         ))}
       </div>

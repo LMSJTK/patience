@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { Card, createDeck, shuffleDeck } from '../lib/cards';
+import { Card, createDeck, faceUp, revealTop, shuffleDeck } from '../lib/cards';
 import { mulberry32, randomSeed } from '../lib/rng';
 import { canMoveToTableau, isValidSpiderSequence, checkForCompletedSequence } from '../lib/solitaire/spider';
 import { useGameStore } from './useGameStore';
@@ -124,9 +124,7 @@ export const useSpiderStore = create<SpiderState>((set, get) => ({
     // Deal 1 card to each column
     for (let i = 0; i < 10; i++) {
       if (newStock.length > 0) {
-        const card = newStock.pop()!;
-        card.isFaceUp = true;
-        newTableau[i].push(card);
+        newTableau[i].push(faceUp(newStock.pop()!));
       }
     }
     
@@ -136,9 +134,7 @@ export const useSpiderStore = create<SpiderState>((set, get) => ({
       if (checkForCompletedSequence(newTableau[i])) {
         newTableau[i] = newTableau[i].slice(0, -13);
         completedSets++;
-        if (newTableau[i].length > 0 && !newTableau[i][newTableau[i].length - 1].isFaceUp) {
-          newTableau[i][newTableau[i].length - 1].isFaceUp = true;
-        }
+        revealTop(newTableau[i]);
       }
     }
 
@@ -220,10 +216,7 @@ export const useSpiderStore = create<SpiderState>((set, get) => ({
         newTableau[from.index] = sourceCol.slice(0, from.cardIndex);
         
         // Flip top card of source column if needed
-        const newSourceCol = newTableau[from.index];
-        if (newSourceCol.length > 0 && !newSourceCol[newSourceCol.length - 1].isFaceUp) {
-          newSourceCol[newSourceCol.length - 1].isFaceUp = true;
-        }
+        revealTop(newTableau[from.index]);
 
         // Check for completed sequence in target column
         let completedSets = state.completedSets;
@@ -232,10 +225,7 @@ export const useSpiderStore = create<SpiderState>((set, get) => ({
           completedSets++;
           
           // Flip top card of target column after removing sequence
-          const newTargetCol = newTableau[to.index];
-          if (newTargetCol.length > 0 && !newTargetCol[newTargetCol.length - 1].isFaceUp) {
-            newTargetCol[newTargetCol.length - 1].isFaceUp = true;
-          }
+          revealTop(newTableau[to.index]);
         }
 
         return {
