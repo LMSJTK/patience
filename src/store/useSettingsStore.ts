@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { setSoundEnabled, setSoundVolume } from '../lib/sound';
+import { ScoringMode } from '../lib/scoring';
 
 export type AnimationSpeed = 'instant' | 'quick' | 'normal';
 
@@ -56,6 +57,14 @@ interface SettingsStore {
   /** A bigger rank and pip, for reading the board from further away. */
   largePrint: boolean;
   setLargePrint: (on: boolean) => void;
+
+  /**
+   * How Klondike keeps score. Only Klondike: standard and Vegas are
+   * conventions of that one game, and there is no agreed way to score the
+   * others.
+   */
+  scoring: ScoringMode;
+  setScoring: (mode: ScoringMode) => void;
 }
 
 export const useSettingsStore = create<SettingsStore>()(
@@ -88,6 +97,9 @@ export const useSettingsStore = create<SettingsStore>()(
 
       largePrint: false,
       setLargePrint: (on) => set({ largePrint: on }),
+
+      scoring: 'none',
+      setScoring: (mode) => set({ scoring: mode }),
     }),
     {
       name: 'patience-settings',

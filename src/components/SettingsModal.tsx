@@ -24,6 +24,7 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     clickToMove, setClickToMove,
     leftHanded, setLeftHanded,
     largePrint, setLargePrint,
+    scoring, setScoring,
   } = useSettingsStore();
   const [prompt, setPrompt] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
@@ -170,6 +171,39 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                     </button>
                   ))}
                 </div>
+              </div>
+
+              <div>
+                <span className="mb-2 block text-sm text-slate-400">
+                  Klondike scoring
+                </span>
+                <div className="flex flex-wrap gap-2">
+                  {([
+                    ['none', 'Off'],
+                    ['standard', 'Standard'],
+                    ['vegas', 'Vegas'],
+                  ] as const).map(([mode, label]) => (
+                    <button
+                      key={mode}
+                      onClick={() => setScoring(mode)}
+                      className={
+                        'rounded-lg px-3 py-1.5 text-sm transition-colors ' +
+                        (scoring === mode
+                          ? 'bg-indigo-600 text-white'
+                          : 'bg-slate-700 text-slate-300 hover:bg-slate-600')
+                      }
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+                <p className="mt-2 text-sm text-slate-400">
+                  {scoring === 'standard'
+                    ? 'Points for cards played and turned over, and a bonus for finishing quickly.'
+                    : scoring === 'vegas'
+                      ? 'A $52 buy-in and $5 a card home. The stock only comes round once on draw three, three times on draw one.'
+                      : 'No score kept. Takes effect on the next deal.'}
+                </p>
               </div>
 
               <label className="flex cursor-pointer items-start gap-3 text-white">

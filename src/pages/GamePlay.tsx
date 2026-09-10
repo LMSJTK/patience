@@ -10,6 +10,7 @@ import { formatTime, useSessionStore } from '../store/useSessionStore';
 import { useDailyStore } from '../store/useDailyStore';
 import { useRecordStore } from '../store/useRecordStore';
 import { DAILY_XP, Difficulty } from '../lib/daily';
+import { formatScore, timeBonus } from '../lib/scoring';
 import { useSearchParams } from 'react-router-dom';
 import KlondikeBoard from '../components/game/KlondikeBoard';
 import FreecellBoard from '../components/game/FreecellBoard';
@@ -40,6 +41,11 @@ export default function GamePlay() {
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
   const [gameState, setGameState] = useState({ isWon: false, moves: 0, seed: 0 });
+  // Klondike is the only game with a scoring convention, so the counter
+  // only appears there and only when one is switched on.
+  const scoring = useKlondikeStore((state) => state.scoring);
+  const score = useKlondikeStore((state) => state.score);
+  const showScore = gameId === 'klondike' && scoring !== 'none';
 
   useEffect(() => {
     const stores = {
@@ -217,6 +223,11 @@ export default function GamePlay() {
           <span className="text-green-300/70 font-mono text-sm hidden sm:inline" title="Deal number">
             #{gameState.seed}
           </span>
+          {showScore && (
+            <span className="text-green-200" title={scoring === 'vegas' ? 'Vegas' : 'Standard scoring'}>
+              Score: {formatScore(scoring, score + (gameState.isWon ? timeBonus(scoring, time) : 0))}
+            </span>
+          )}
           <span className="text-green-200">Moves: {gameState.moves}</span>
           <span className="text-green-200 font-mono text-lg">Time: {formatTime(time)}</span>
         </div>
