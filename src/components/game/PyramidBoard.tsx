@@ -2,9 +2,10 @@ import React, { useEffect } from 'react';
 import { usePyramidStore } from '../../store/usePyramidStore';
 import PlayingCard from './PlayingCard';
 import { cn } from '../../lib/utils';
-import { Undo2, RefreshCw } from 'lucide-react';
+import { RefreshCw } from 'lucide-react';
 import { getRowCol, isCardExposed } from '../../lib/solitaire/pyramid';
-import { WinScreen, useDealSeed, useGameSounds, useTableMetrics } from './table';
+import { HintButton, NoMoves, UndoRedo, WinScreen, useDealSeed, useGameSounds, useHint, useKeyboard, useTableMetrics } from './table';
+import { HintContext } from './table/hintContext';
 
 /**
  * The pyramid is seven rows deep and its widest row is seven cards, but each
@@ -15,11 +16,20 @@ const SHAPE = { columns: 4, typicalColumn: 7 };
 export default function PyramidBoard() {
   const { 
     stock, waste, pyramid, selectedCard, isWon,
-    initGame, drawCard, handleCardClick, undo, history, seed
+    initGame, drawCard, handleCardClick, undo, redo, history, future, moves, seed
   } = usePyramidStore();
 
   const dealSeed = useDealSeed();
   const { dealDelayOf } = useGameSounds(usePyramidStore);
+  const { shown: hint, next: showHint, stuck } = useHint(usePyramidStore, moves, isWon);
+  const stockHinted = hint?.target === 'stock';
+  useKeyboard({
+    undo,
+    redo,
+    hint: showHint,
+    newDeal: () => initGame(),
+    stock: drawCard,
+  });
   const { cardWidth, cardHeight, style: tableStyle } = useTableMetrics(SHAPE);
 
   // Cards overlap by half across a row and by two fifths down the pyramid,
@@ -38,16 +48,17 @@ export default function PyramidBoard() {
   }
 
   return (
+    <HintContext.Provider value={hint}>
     <div style={tableStyle} className="w-full mx-auto flex flex-col gap-8">
       {/* Controls */}
-      <div className="flex justify-end">
-        <button 
-          onClick={undo}
-          disabled={history.length === 0}
-          className="flex items-center gap-2 px-4 py-2 bg-slate-800 text-white rounded-lg hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-        >
-          <Undo2 className="w-4 h-4" /> Undo
-        </button>
+      <div className="flex justify-end gap-2 sm:gap-4">
+        <HintButton onClick={showHint} />
+        <UndoRedo
+          canUndo={history.length > 0}
+          canRedo={future.length > 0}
+          onUndo={undo}
+          onRedo={redo}
+        />
       </div>
 
       {/* Pyramid */}
@@ -93,8 +104,8 @@ export default function PyramidBoard() {
       <div className="flex justify-center gap-8 items-center mt-4">
         {/* Stock */}
         <div className="flex flex-col items-center gap-2">
-          <div 
-            className="relative w-24 h-36" 
+          <div
+            className={cn('relative w-24 h-36 rounded-xl', stockHinted && 'ring-4 ring-sky-400 ring-inset')}
             onClick={drawCard}
           >
             {stock.length > 0 ? (
@@ -126,6 +137,8 @@ export default function PyramidBoard() {
           )}
         </div>
       </div>
+      {stuck && <NoMoves onUndo={undo} onNewDeal={() => initGame()} />}
     </div>
+    </HintContext.Provider>
   );
 }

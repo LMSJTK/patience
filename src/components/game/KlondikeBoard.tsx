@@ -1,4 +1,6 @@
-import { Settings, Undo2 } from 'lucide-react';
+import { Settings } from 'lucide-react';
+import { useSettingsStore } from '../../store/useSettingsStore';
+import { cn } from '../../lib/utils';
 import { useEffect, useState } from 'react';
 import { CardLocation, useKlondikeStore } from '../../store/useKlondikeStore';
 import PlayingCard from './PlayingCard';
@@ -6,9 +8,16 @@ import {
   CardTable,
   DraggableCard,
   DroppableArea,
+  UndoRedo,
   FinishButton,
   WinScreen,
   useAutoComplete,
+  HintButton,
+  NoMoves,
+  useHint,
+  useKeyboard,
+  useMoveClick,
+  useDealOptions,
   useDealSeed,
   useGameSounds,
   useTableMetrics,
@@ -29,11 +38,15 @@ export default function KlondikeBoard() {
     foundations,
     tableau,
     initGame,
+    drawCard,
     selectCard,
     isWon,
     handleDrop,
     undo,
+    redo,
     history,
+    future,
+    moves,
     canAutoComplete,
     seed,
     drawCount,
@@ -43,12 +56,24 @@ export default function KlondikeBoard() {
   const { cardHeight, cardSpacing, fanFor, style: tableStyle } = useTableMetrics(SHAPE);
 
   const dealSeed = useDealSeed();
+  const options = useDealOptions();
   const { onDrop, dealDelayOf } = useGameSounds(useKlondikeStore, handleDrop);
+  const { shown: hint, next: showHint, stuck } = useHint(useKlondikeStore, moves, isWon);
+  const stockHinted = hint?.target === 'stock';
+  const onMove = useMoveClick();
+  const leftHanded = useSettingsStore((state) => state.leftHanded);
+  useKeyboard({
+    undo,
+    redo,
+    hint: showHint,
+    newDeal: () => initGame(drawCount),
+    stock: drawCard,
+  });
   const { finishing, start: startFinishing } = useAutoComplete(useKlondikeStore, seed);
 
   useEffect(() => {
-    initGame(1, dealSeed);
-  }, [initGame, dealSeed]);
+    initGame(options.draw ?? 1, dealSeed);
+  }, [initGame, dealSeed, options.draw]);
 
   if (isWon) {
     return <WinScreen
@@ -64,6 +89,7 @@ export default function KlondikeBoard() {
     <CardTable<CardLocation, KlondikeTarget>
       onDrop={onDrop}
       style={tableStyle}
+      hint={hint}
     >
       {/* Controls */}
       <div className="flex justify-between items-center">
@@ -89,24 +115,27 @@ export default function KlondikeBoard() {
         </div>
         <div className="flex gap-2 sm:gap-4">
           {canFinish && <FinishButton finishing={finishing} onClick={startFinishing} />}
-          <button
-          onClick={undo}
-          disabled={history.length === 0}
-          className="flex items-center gap-2 px-3 py-1.5 sm:px-4 sm:py-2 bg-slate-800 text-white rounded-lg hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-xs sm:text-sm"
-        >
-          <Undo2 className="w-3 h-3 sm:w-4 sm:h-4" /> Undo
-          </button>
+          <HintButton onClick={showHint} />
+          <UndoRedo
+          canUndo={history.length > 0}
+          canRedo={future.length > 0}
+          onUndo={undo}
+          onRedo={redo}
+        />
         </div>
       </div>
 
       {/* Top Row: Stock, Waste, Foundations */}
-      <div className="flex justify-between gap-2">
+      <div className={cn('flex justify-between gap-2', leftHanded && 'flex-row-reverse')}>
         <div className="flex gap-2 sm:gap-4">
           {/* Stock */}
           <div
             style={slot}
-            className="rounded-xl border-2 border-white/20 bg-black/20 cursor-pointer relative"
-            onClick={useKlondikeStore.getState().drawCard}
+            className={cn(
+              'rounded-xl border-2 border-white/20 bg-black/20 cursor-pointer relative',
+              stockHinted && 'ring-4 ring-sky-400 ring-inset'
+            )}
+            onClick={drawCard}
           >
             {stock.length > 0 && <PlayingCard card={stock[stock.length - 1]} className="absolute inset-0" />}
           </div>
@@ -124,7 +153,7 @@ export default function KlondikeBoard() {
                     location={{ type: 'waste' } as CardLocation}
                     cardsToDrag={[card]}
                     style={{ left: offset }}
-                    onClick={() => selectCard({ type: 'waste' })}
+                    {...onMove(() => selectCard({ type: 'waste' }))}
                   />
                 );
               }
@@ -142,7 +171,7 @@ export default function KlondikeBoard() {
               data={{ type: 'foundation', index: i } as KlondikeTarget}
               style={slot}
               className="rounded-xl border-2 border-white/20 bg-black/20 relative"
-              onClick={() => selectCard({ type: 'foundation', index: i })}
+              {...onMove(() => selectCard({ type: 'foundation', index: i }))}
             >
               {col.map((card) => (
                 <PlayingCard key={card.id} card={card} className="absolute inset-0 pointer-events-none" />
@@ -180,19 +209,18 @@ export default function KlondikeBoard() {
                 cardsToDrag={col.slice(j)}
                 dealDelay={dealDelayOf(card.id)}
                 style={{ top: j * fanFor(col.length), zIndex: j }}
-                onClick={
-                  card.isFaceUp
-                    ? (e) => {
-                        e.stopPropagation();
-                        selectCard({ type: 'tableau', index: i, cardIndex: j });
-                      }
-                    : undefined
-                }
+                {...(card.isFaceUp
+                  ? onMove((e) => {
+                      e.stopPropagation();
+                      selectCard({ type: 'tableau', index: i, cardIndex: j });
+                    })
+                  : {})}
               />
             ))}
           </DroppableArea>
         ))}
       </div>
+      {stuck && <NoMoves onUndo={undo} onNewDeal={() => initGame(drawCount)} />}
     </CardTable>
   );
 }

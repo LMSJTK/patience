@@ -7,6 +7,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { useEffect } from 'react';
 import Dashboard from './pages/Dashboard';
 import GamePlay from './pages/GamePlay';
+import Statistics from './pages/Statistics';
 import { unlockSound } from './lib/sound';
 import { initAuth } from './store/useAuthStore';
 
@@ -37,6 +38,7 @@ export default function App() {
       <Routes>
         <Route path="/" element={<Dashboard />} />
         <Route path="/play/:gameId" element={<GamePlay />} />
+        <Route path="/stats" element={<Statistics />} />
       </Routes>
     </BrowserRouter>
   );

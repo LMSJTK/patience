@@ -35,6 +35,7 @@ export interface DraggableCardProps<L> {
   className?: string;
   style?: React.CSSProperties;
   onClick?: (e: React.MouseEvent) => void;
+  onDoubleClick?: (e: React.MouseEvent) => void;
 }
 
 export function DraggableCard<L>({
@@ -46,6 +47,7 @@ export function DraggableCard<L>({
   className,
   style,
   onClick,
+  onDoubleClick,
 }: DraggableCardProps<L>) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: card.id,
@@ -76,6 +78,7 @@ export function DraggableCard<L>({
       className={cn('absolute w-full touch-none', className)}
       style={{ ...style, ...carriedStyle }}
       onClick={onClick}
+      onDoubleClick={onDoubleClick}
     >
       <PlayingCard card={card} dealDelay={dealDelay} />
     </div>

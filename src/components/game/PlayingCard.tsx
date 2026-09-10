@@ -4,7 +4,9 @@ import * as geometry from './cardGeometry';
 import { cn } from '../../lib/utils';
 import { motion, useReducedMotion } from 'motion/react';
 import { useGameStore } from '../../store/useGameStore';
+import { SPEED_FACTOR, useSettingsStore } from '../../store/useSettingsStore';
 import { Heart, Diamond, Club, Spade } from 'lucide-react';
+import { useIsHinted } from './table/hintContext';
 
 /**
  * motion.div redefines the drag and animation handlers with its own
@@ -80,16 +82,24 @@ const cardSize: React.CSSProperties = {
   height: H,
   borderRadius: `calc(${W} * ${geometry.CARD_RADIUS})`,
 };
-/** Rank and suit in the corners. */
-const corner: React.CSSProperties = {
-  fontSize: `calc(${W} * ${geometry.RANK_SIZE})`,
-  width: `calc(${W} * 0.2)`,
-  gap: `calc(${W} * ${geometry.RANK_PIP_GAP})`,
-};
-const cornerPip = {
-  width: `calc(${W} * ${geometry.CORNER_PIP})`,
-  height: `calc(${W} * ${geometry.CORNER_PIP})`,
-};
+/**
+ * Rank and suit in the corners, at whichever size is in force.
+ *
+ * Built once per size rather than per card: fifty-two cards all want the same
+ * two objects, and a fresh one each render would defeat the memo comparator
+ * that compares styles field by field.
+ */
+const cornerStyles = ([false, true] as const).map((largePrint) => ({
+  corner: {
+    fontSize: `calc(${W} * ${geometry.rankSize(largePrint)})`,
+    width: `calc(${W} * ${largePrint ? 0.26 : 0.2})`,
+    gap: `calc(${W} * ${geometry.RANK_PIP_GAP})`,
+  } as React.CSSProperties,
+  pip: {
+    width: `calc(${W} * ${geometry.cornerPip(largePrint)})`,
+    height: `calc(${W} * ${geometry.cornerPip(largePrint)})`,
+  } as React.CSSProperties,
+}));
 /** The big watermark suit behind the face. */
 const centrePip = {
   width: `calc(${W} * ${geometry.CENTRE_PIP})`,
@@ -115,17 +125,26 @@ const PlayingCardInner = forwardRef<HTMLDivElement, PlayingCardProps>(
     // Subscribed to the one field this needs. Reading the whole store meant a
     // card re-rendered whenever anything in it changed, XP included.
     const cardBack = useGameStore((state) => state.cardBack);
+    const largePrint = useSettingsStore((state) => state.largePrint);
+    const speed = SPEED_FACTOR[useSettingsStore((state) => state.animationSpeed)];
+    const { corner, pip: cornerPip } = cornerStyles[largePrint ? 1 : 0];
+    // Context, not a prop: a hint has to reach cards scattered across a board
+    // that knows nothing about hints.
+    const hinted = useIsHinted(card.id);
     const reduceMotion = useReducedMotion();
-    const transition = reduceMotion ? NO_MOTION : MOVE_TRANSITION;
+    const still = reduceMotion || speed === 0;
+    const transition = still
+      ? NO_MOTION
+      : { ...MOVE_TRANSITION, duration: MOVE_TRANSITION.duration * speed };
 
     // While a hand is going out, each card waits its turn and then drops in.
     // The wait matches the card-slide sound exactly, so the two are one event.
-    const dealing = dealDelay !== undefined && !reduceMotion;
+    const dealing = dealDelay !== undefined && !still;
     const motionProps = dealing
       ? {
           initial: DEAL_FROM,
           animate: CARD_AT_REST,
-          transition: { duration: 0.2, ease: MOVE_TRANSITION.ease, delay: dealDelay },
+          transition: { duration: 0.2 * speed, ease: MOVE_TRANSITION.ease, delay: dealDelay },
         }
       : { animate: CARD_AT_REST, transition };
 
@@ -145,6 +164,7 @@ const PlayingCardInner = forwardRef<HTMLDivElement, PlayingCardProps>(
         {...(card.isFaceUp ? { 'data-rank': card.rank, 'data-suit': card.suit } : {})}
         className={cn(
           'relative shadow-md cursor-pointer',
+          hinted && 'ring-2 sm:ring-4 ring-sky-400 ring-offset-1 sm:ring-offset-2 ring-offset-green-900 z-40',
           isSelected && 'ring-2 sm:ring-4 ring-yellow-400 ring-offset-1 sm:ring-offset-2 ring-offset-green-900 z-50',
           className
         )}
@@ -156,9 +176,9 @@ const PlayingCardInner = forwardRef<HTMLDivElement, PlayingCardProps>(
           style={{
             transformStyle: 'preserve-3d',
             transform: card.isFaceUp ? 'rotateY(0deg)' : 'rotateY(180deg)',
-            transition: reduceMotion
+            transition: still
               ? undefined
-              : `transform ${FLIP_MS}ms cubic-bezier(0.2, 0.8, 0.2, 1)`,
+              : `transform ${Math.round(FLIP_MS * speed)}ms cubic-bezier(0.2, 0.8, 0.2, 1)`,
           }}
         >
           {/* The face. Only built once the card is turned up, so a hidden card

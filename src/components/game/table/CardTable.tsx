@@ -2,6 +2,7 @@ import { DndContext, PointerSensor, rectIntersection, useSensor, useSensors } fr
 import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { cn } from '../../../lib/utils';
 import { DragPayload } from './DraggableCard';
+import { HintContext, ShownHint } from './hintContext';
 
 /**
  * The ids of the cards currently in the player's hand.
@@ -26,6 +27,8 @@ export interface CardTableProps<L, T> {
   className?: string;
   /** Carries the card size down to every card and pile below. */
   style?: React.CSSProperties;
+  /** The move being suggested, for the cards and piles below to light up. */
+  hint?: ShownHint | null;
   children: React.ReactNode;
 }
 
@@ -39,7 +42,7 @@ export interface CardTableProps<L, T> {
  * container, and the cards being carried read them. Nothing re-renders while
  * the pointer moves, and there is only ever one of each card.
  */
-export function CardTable<L, T>({ onDrop, className, style, children }: CardTableProps<L, T>) {
+export function CardTable<L, T>({ onDrop, className, style, hint = null, children }: CardTableProps<L, T>) {
   const container = useRef<HTMLDivElement>(null);
   const [carrying, setCarrying] = useState<ReadonlySet<string> | null>(null);
   const release = useRef<number | undefined>(undefined);
@@ -89,6 +92,7 @@ export function CardTable<L, T>({ onDrop, className, style, children }: CardTabl
       onDragCancel={finish}
     >
       <DraggingCards.Provider value={carrying}>
+        <HintContext.Provider value={hint}>
         <div
           ref={container}
           className={cn('w-full mx-auto flex flex-col gap-4 sm:gap-8 p-2 sm:p-4', className)}
@@ -96,6 +100,7 @@ export function CardTable<L, T>({ onDrop, className, style, children }: CardTabl
         >
           {children}
         </div>
+        </HintContext.Provider>
       </DraggingCards.Provider>
     </DndContext>
   );

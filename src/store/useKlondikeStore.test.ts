@@ -299,7 +299,7 @@ describe('checkWin', () => {
     // let the same deal bank its XP over and over.
     useKlondikeStore.setState({
       foundations: wonFoundations(),
-      history: [{ stock: [], waste: [], foundations: [[], [], [], []], tableau: [[], [], [], [], [], [], []] }],
+      history: [{ stock: [], waste: [], foundations: [[], [], [], []], tableau: [[], [], [], [], [], [], []], score: 0, stockPasses: 0 }],
     });
     s().checkWin();
     expect(totalXp('klondike')).toBe(100);

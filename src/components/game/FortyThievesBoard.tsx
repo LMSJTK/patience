@@ -1,4 +1,5 @@
-import { Settings, Undo2 } from 'lucide-react';
+import { Settings } from 'lucide-react';
+import { useSettingsStore } from '../../store/useSettingsStore';
 import { useEffect, useState } from 'react';
 import { cn } from '../../lib/utils';
 import { getMaxMoveCount, isValidFortyThievesSequence } from '../../lib/solitaire/fortythieves';
@@ -8,7 +9,14 @@ import {
   CardTable,
   DraggableCard,
   DroppableArea,
+  UndoRedo,
   WinScreen,
+  HintButton,
+  NoMoves,
+  useHint,
+  useKeyboard,
+  useMoveClick,
+  useDealOptions,
   useDealSeed,
   useGameSounds,
   useTableMetrics,
@@ -35,7 +43,10 @@ export default function FortyThievesBoard() {
     isWon,
     handleDrop,
     undo,
+    redo,
     history,
+    future,
+    moves,
     seed,
   } = useFortyThievesStore();
 
@@ -43,11 +54,23 @@ export default function FortyThievesBoard() {
   const { cardHeight, fanFor, style: tableStyle } = useTableMetrics(SHAPE);
 
   const dealSeed = useDealSeed();
+  const options = useDealOptions();
   const { onDrop, dealDelayOf } = useGameSounds(useFortyThievesStore, handleDrop);
+  const { shown: hint, next: showHint, stuck } = useHint(useFortyThievesStore, moves, isWon);
+  const stockHinted = hint?.target === 'stock';
+  const onMove = useMoveClick();
+  const leftHanded = useSettingsStore((state) => state.leftHanded);
+  useKeyboard({
+    undo,
+    redo,
+    hint: showHint,
+    newDeal: () => initGame(isJosephine),
+    stock: drawCard,
+  });
 
   useEffect(() => {
-    initGame(false, dealSeed);
-  }, [initGame, dealSeed]);
+    initGame(options.josephine ?? false, dealSeed);
+  }, [initGame, dealSeed, options.josephine]);
 
   // The destination is unknown while a card is in the air, so allow the most
   // permissive limit here: the one for moving onto an occupied column.
@@ -68,6 +91,7 @@ export default function FortyThievesBoard() {
     <CardTable<FortyThievesLocation, FortyThievesTarget>
       onDrop={onDrop}
       style={tableStyle}
+      hint={hint}
     >
       {/* Controls */}
       <div className="flex justify-between items-center">
@@ -92,24 +116,25 @@ export default function FortyThievesBoard() {
             </div>
           )}
         </div>
-        <button
-          onClick={undo}
-          disabled={history.length === 0}
-          className="flex items-center gap-2 px-3 py-1.5 sm:px-4 sm:py-2 bg-slate-800 text-white rounded-lg hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-xs sm:text-sm"
-        >
-          <Undo2 className="w-3 h-3 sm:w-4 sm:h-4" /> Undo
-        </button>
+        <HintButton onClick={showHint} />
+        <UndoRedo
+          canUndo={history.length > 0}
+          canRedo={future.length > 0}
+          onUndo={undo}
+          onRedo={redo}
+        />
       </div>
 
       {/* Top Row: Stock, Waste, and Foundations */}
-      <div className="flex justify-between items-start gap-2 sm:gap-8">
+      <div className={cn('flex justify-between items-start gap-2 sm:gap-8', leftHanded && 'flex-row-reverse')}>
         <div className="flex gap-2 sm:gap-4">
           {/* Stock */}
           <div className="flex flex-col items-center gap-1 sm:gap-2">
             <div
               className={cn(
                 'relative rounded-xl border-2 border-white/20 bg-black/20',
-                stock.length > 0 ? 'cursor-pointer hover:border-white/40' : 'opacity-50'
+                stock.length > 0 ? 'cursor-pointer hover:border-white/40' : 'opacity-50',
+                stockHinted && 'ring-4 ring-sky-400 ring-inset'
               )}
               onClick={drawCard}
             >
@@ -132,7 +157,7 @@ export default function FortyThievesBoard() {
                   location={{ type: 'waste' } as FortyThievesLocation}
                   cardsToDrag={[card]}
                   className="absolute inset-0"
-                  onClick={() => autoMoveCard({ type: 'waste' })}
+                  {...onMove(() => autoMoveCard({ type: 'waste' }))}
                 />
               ) : (
                 <PlayingCard key={card.id} card={card} className="absolute inset-0 pointer-events-none" />
@@ -150,9 +175,9 @@ export default function FortyThievesBoard() {
               data={{ type: 'foundation', index: i } as FortyThievesTarget}
               style={{ width: 'calc(var(--card-w) * 0.84)', height: 'calc(var(--card-h) * 0.84)' }}
               className="rounded-lg border-2 border-white/20 bg-black/20 relative"
-              onClick={() => {
+              {...onMove(() => {
                 if (col.length > 0) autoMoveCard({ type: 'foundation', index: i });
-              }}
+              })}
             >
               {col.map((card) => (
                 <PlayingCard key={card.id} card={card} className="absolute inset-0 pointer-events-none" />
@@ -183,16 +208,17 @@ export default function FortyThievesBoard() {
                   canDrag={isValidFortyThievesSequence(run) && run.length <= maxMove}
                   dealDelay={dealDelayOf(card.id)}
                   style={{ top: j * fanFor(col.length), zIndex: j }}
-                  onClick={(e) => {
+                  {...onMove((e) => {
                     e.stopPropagation();
                     autoMoveCard({ type: 'tableau', index: i, cardIndex: j });
-                  }}
+                  })}
                 />
               );
             })}
           </DroppableArea>
         ))}
       </div>
+      {stuck && <NoMoves onUndo={undo} onNewDeal={() => initGame(isJosephine)} />}
     </CardTable>
   );
 }

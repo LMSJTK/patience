@@ -1,6 +1,7 @@
 import { useDroppable } from '@dnd-kit/core';
 import React from 'react';
 import { cn } from '../../../lib/utils';
+import { useIsHintTarget } from './hintContext';
 
 export interface DroppableAreaProps<T> {
   /**
@@ -16,14 +17,16 @@ export interface DroppableAreaProps<T> {
   style?: React.CSSProperties;
   children?: React.ReactNode;
   onClick?: (e: React.MouseEvent) => void;
+  onDoubleClick?: (e: React.MouseEvent) => void;
 }
 
 /**
- * A pile a card can be dropped onto. Highlights while a card is over it.
+ * A pile a card can be dropped onto.
  *
- * The highlight follows the pointer rather than the dragged card, because
- * that is what dnd-kit's pointerWithin reports. Phase 2 switches to deciding
- * by overlap, which is more forgiving when a card is grabbed by its corner.
+ * Highlights twice over: yellow while a card is being held over it, and a
+ * steady blue while a hint is pointing at it. Different colours because they
+ * mean different things — one is where the card would land if you let go, the
+ * other is a suggestion you have not acted on.
  */
 export function DroppableArea<T>({
   id,
@@ -32,18 +35,25 @@ export function DroppableArea<T>({
   style,
   children,
   onClick,
+  onDoubleClick,
 }: DroppableAreaProps<T>) {
   const { setNodeRef, isOver } = useDroppable({
     id,
     data: data as Record<string, unknown>,
   });
+  const hinted = useIsHintTarget(id);
 
   return (
     <div
       ref={setNodeRef}
-      className={cn(className, isOver && 'ring-4 ring-yellow-400 ring-inset')}
+      className={cn(
+        className,
+        hinted && 'ring-4 ring-sky-400 ring-inset',
+        isOver && 'ring-4 ring-yellow-400 ring-inset'
+      )}
       style={style}
       onClick={onClick}
+      onDoubleClick={onDoubleClick}
     >
       {children}
     </div>

@@ -1,5 +1,6 @@
-import { Undo2 } from 'lucide-react';
 import { useEffect } from 'react';
+import { cn } from '../../lib/utils';
+import { useSettingsStore } from '../../store/useSettingsStore';
 import { isValidSequence } from '../../lib/solitaire/freecell';
 import { FreecellLocation, useFreecellStore } from '../../store/useFreecellStore';
 import PlayingCard from './PlayingCard';
@@ -7,9 +8,15 @@ import {
   CardTable,
   DraggableCard,
   DroppableArea,
+  UndoRedo,
   FinishButton,
   WinScreen,
   useAutoComplete,
+  HintButton,
+  NoMoves,
+  useHint,
+  useKeyboard,
+  useMoveClick,
   useDealSeed,
   useGameSounds,
   useTableMetrics,
@@ -33,7 +40,10 @@ export default function FreecellBoard() {
     isWon,
     handleDrop,
     undo,
+    redo,
     history,
+    future,
+    moves,
     canAutoComplete,
     seed,
   } = useFreecellStore();
@@ -42,6 +52,15 @@ export default function FreecellBoard() {
 
   const dealSeed = useDealSeed();
   const { onDrop, dealDelayOf } = useGameSounds(useFreecellStore, handleDrop);
+  const { shown: hint, next: showHint, stuck } = useHint(useFreecellStore, moves, isWon);
+  const onMove = useMoveClick();
+  const leftHanded = useSettingsStore((state) => state.leftHanded);
+  useKeyboard({
+    undo,
+    redo,
+    hint: showHint,
+    newDeal: () => initGame(),
+  });
   const { finishing, start: startFinishing } = useAutoComplete(useFreecellStore, seed);
 
   useEffect(() => {
@@ -58,21 +77,22 @@ export default function FreecellBoard() {
     <CardTable<FreecellLocation, FreecellTarget>
       onDrop={onDrop}
       style={tableStyle}
+      hint={hint}
     >
       {/* Controls */}
       <div className="flex justify-end gap-2 sm:gap-4">
         {canFinish && <FinishButton finishing={finishing} onClick={startFinishing} />}
-        <button
-          onClick={undo}
-          disabled={history.length === 0}
-          className="flex items-center gap-2 px-3 py-1.5 sm:px-4 sm:py-2 bg-slate-800 text-white rounded-lg hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-xs sm:text-sm"
-        >
-          <Undo2 className="w-3 h-3 sm:w-4 sm:h-4" /> Undo
-        </button>
+        <HintButton onClick={showHint} />
+        <UndoRedo
+          canUndo={history.length > 0}
+          canRedo={future.length > 0}
+          onUndo={undo}
+          onRedo={redo}
+        />
       </div>
 
       {/* Top Row: Free Cells and Foundations */}
-      <div className="flex justify-between items-start gap-2 sm:gap-8">
+      <div className={cn('flex justify-between items-start gap-2 sm:gap-8', leftHanded && 'flex-row-reverse')}>
         {/* Free Cells */}
         <div className="flex gap-1 sm:gap-2 md:gap-4">
           {freeCells.map((card, i) => (
@@ -82,9 +102,9 @@ export default function FreecellBoard() {
               data={{ type: 'freecell', index: i } as FreecellTarget}
               style={slot}
               className="rounded-xl border-2 border-white/20 bg-black/20 relative"
-              onClick={() => {
+              {...onMove(() => {
                 if (card) autoMoveCard({ type: 'freecell', index: i });
-              }}
+              })}
             >
               {card && (
                 <DraggableCard
@@ -107,9 +127,9 @@ export default function FreecellBoard() {
               data={{ type: 'foundation', index: i } as FreecellTarget}
               style={slot}
               className="rounded-xl border-2 border-white/20 bg-black/20 relative"
-              onClick={() => {
+              {...onMove(() => {
                 if (col.length > 0) autoMoveCard({ type: 'foundation', index: i });
-              }}
+              })}
             >
               {col.map((card) => (
                 <PlayingCard key={card.id} card={card} className="absolute inset-0 pointer-events-none" />
@@ -138,15 +158,16 @@ export default function FreecellBoard() {
                 canDrag={isValidSequence(col.slice(j))}
                 dealDelay={dealDelayOf(card.id)}
                 style={{ top: j * fanFor(col.length), zIndex: j }}
-                onClick={(e) => {
+                {...onMove((e) => {
                   e.stopPropagation();
                   autoMoveCard({ type: 'tableau', index: i, cardIndex: j });
-                }}
+                })}
               />
             ))}
           </DroppableArea>
         ))}
       </div>
+      {stuck && <NoMoves onUndo={undo} onNewDeal={() => initGame()} />}
     </CardTable>
   );
 }

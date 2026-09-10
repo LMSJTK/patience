@@ -7,6 +7,11 @@ import { db } from '../lib/firebase';
 import { collection, addDoc, doc, getDoc, setDoc } from 'firebase/firestore';
 import { checkAndAwardAchievements } from '../lib/achievements';
 import { formatTime, useSessionStore } from '../store/useSessionStore';
+import { useDailyStore } from '../store/useDailyStore';
+import { useRecordStore } from '../store/useRecordStore';
+import { DAILY_XP, Difficulty } from '../lib/daily';
+import { formatScore, timeBonus } from '../lib/scoring';
+import { useSearchParams } from 'react-router-dom';
 import KlondikeBoard from '../components/game/KlondikeBoard';
 import FreecellBoard from '../components/game/FreecellBoard';
 import SpiderBoard from '../components/game/SpiderBoard';
@@ -23,6 +28,10 @@ import { useMissMilliganStore } from '../store/useMissMilliganStore';
 
 export default function GamePlay() {
   const { gameId } = useParams<{ gameId: GameType }>();
+  const [searchParams] = useSearchParams();
+  // Set when this game was opened from a daily challenge card, so winning it
+  // counts towards the streak rather than being an ordinary game.
+  const dailyChallenge = searchParams.get('daily');
   const { user, profile } = useAuthStore();
   const updateStats = useGameStore(state => state.updateStats);
   const stats = useGameStore(state => state.stats);
@@ -31,7 +40,12 @@ export default function GamePlay() {
   const [isPlaying, setIsPlaying] = useState(false);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
-  const [gameState, setGameState] = useState({ isWon: false, historyLength: 0, seed: 0 });
+  const [gameState, setGameState] = useState({ isWon: false, moves: 0, seed: 0 });
+  // Klondike is the only game with a scoring convention, so the counter
+  // only appears there and only when one is switched on.
+  const scoring = useKlondikeStore((state) => state.scoring);
+  const score = useKlondikeStore((state) => state.score);
+  const showScore = gameId === 'klondike' && scoring !== 'none';
 
   useEffect(() => {
     const stores = {
@@ -57,7 +71,7 @@ export default function GamePlay() {
     // Initial state
     setGameState({
       isWon: store.getState().isWon,
-      historyLength: store.getState().history.length,
+      moves: store.getState().moves,
       seed: store.getState().seed,
     });
 
@@ -65,7 +79,7 @@ export default function GamePlay() {
     const unsubscribe = store.subscribe((state: any) => {
       setGameState({
         isWon: state.isWon,
-        historyLength: state.history.length,
+        moves: state.moves,
         seed: state.seed,
       });
     });
@@ -74,14 +88,15 @@ export default function GamePlay() {
   }, [gameId]);
 
   useEffect(() => {
-    if (gameState.historyLength > 0 && !gameState.isWon && !isPlaying) {
+    if (gameState.moves > 0 && !gameState.isWon && !isPlaying) {
       setIsPlaying(true);
-    } else if (gameState.historyLength === 0) {
+      if (gameId) useRecordStore.getState().start(gameId, currentDifficulty(gameId));
+    } else if (gameState.moves === 0) {
       setIsPlaying(false);
       setTime(0);
       useSessionStore.getState().startNewGame();
     }
-  }, [gameState.historyLength, gameState.isWon]);
+  }, [gameState.moves, gameState.isWon]);
 
   useEffect(() => {
     if (isPlaying && !gameState.isWon) {
@@ -108,18 +123,25 @@ export default function GamePlay() {
     }
   }, [gameState.isWon]);
 
+  /**
+   * The tier a game is being played at, from its own settings — so a
+   * draw-three win is never filed next to a draw-one one.
+   */
+  const currentDifficulty = (game: GameType): Difficulty => {
+    if (game === 'spider') {
+      const suits = useSpiderStore.getState().suitCount;
+      return suits === 1 ? 'easy' : suits === 2 ? 'medium' : 'hard';
+    }
+    if (game === 'klondike') {
+      return useKlondikeStore.getState().drawCount === 1 ? 'easy' : 'hard';
+    }
+    return 'medium';
+  };
+
   const handleWin = async (finalTime: number) => {
     if (!gameId) return;
     
-    // Determine difficulty (simplified for now, could be passed from stores)
-    let difficulty: 'easy' | 'medium' | 'hard' = 'medium';
-    if (gameId === 'spider') {
-      const suitCount = useSpiderStore.getState().suitCount;
-      difficulty = suitCount === 1 ? 'easy' : suitCount === 2 ? 'medium' : 'hard';
-    } else if (gameId === 'klondike') {
-      const drawCount = useKlondikeStore.getState().drawCount;
-      difficulty = drawCount === 1 ? 'easy' : 'hard';
-    }
+    const difficulty = currentDifficulty(gameId);
 
     // Update local stats
     const currentBest = stats[gameId].highScores[difficulty];
@@ -131,11 +153,23 @@ export default function GamePlay() {
     // here rather than letting it read the value this win is about to replace.
     useSessionStore.getState().recordWin({
       seconds: finalTime,
-      moves: gameState.historyLength,
+      moves: gameState.moves,
       // A high score of zero is how this store spells "never won this one",
       // which is what the isNewBest test above reads it as too.
       previousBest: currentBest || null,
     });
+
+    useRecordStore.getState().win(gameId, difficulty, {
+      seconds: finalTime,
+      moves: gameState.moves,
+    });
+
+    // A daily challenge pays out once, the first time it is won.
+    if (dailyChallenge && !useDailyStore.getState().isComplete(dailyChallenge)) {
+      useDailyStore.getState().complete(dailyChallenge);
+      const tier = dailyChallenge.split(':')[2] as Difficulty;
+      if (DAILY_XP[tier]) useGameStore.getState().addXp(gameId, DAILY_XP[tier]);
+    }
 
     if (isNewBest) {
       updateStats(gameId, {
@@ -189,7 +223,12 @@ export default function GamePlay() {
           <span className="text-green-300/70 font-mono text-sm hidden sm:inline" title="Deal number">
             #{gameState.seed}
           </span>
-          <span className="text-green-200">Moves: {gameState.historyLength}</span>
+          {showScore && (
+            <span className="text-green-200" title={scoring === 'vegas' ? 'Vegas' : 'Standard scoring'}>
+              Score: {formatScore(scoring, score + (gameState.isWon ? timeBonus(scoring, time) : 0))}
+            </span>
+          )}
+          <span className="text-green-200">Moves: {gameState.moves}</span>
           <span className="text-green-200 font-mono text-lg">Time: {formatTime(time)}</span>
         </div>
       </header>

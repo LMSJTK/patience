@@ -1,4 +1,5 @@
-import { Settings, Undo2 } from 'lucide-react';
+import { Settings } from 'lucide-react';
+import { useSettingsStore } from '../../store/useSettingsStore';
 import { useEffect, useState } from 'react';
 import { cn } from '../../lib/utils';
 import { isValidSpiderSequence } from '../../lib/solitaire/spider';
@@ -8,7 +9,14 @@ import {
   CardTable,
   DraggableCard,
   DroppableArea,
+  UndoRedo,
   WinScreen,
+  HintButton,
+  NoMoves,
+  useHint,
+  useKeyboard,
+  useMoveClick,
+  useDealOptions,
   useDealSeed,
   useGameSounds,
   useTableMetrics,
@@ -35,7 +43,10 @@ export default function SpiderBoard() {
     isWon,
     handleDrop,
     undo,
+    redo,
     history,
+    future,
+    moves,
     seed,
   } = useSpiderStore();
 
@@ -43,11 +54,23 @@ export default function SpiderBoard() {
   const { cardHeight, fanFor, style: tableStyle } = useTableMetrics(SHAPE);
 
   const dealSeed = useDealSeed();
+  const options = useDealOptions();
   const { onDrop, dealDelayOf } = useGameSounds(useSpiderStore, handleDrop);
+  const { shown: hint, next: showHint, stuck } = useHint(useSpiderStore, moves, isWon);
+  const stockHinted = hint?.target === 'stock';
+  const onMove = useMoveClick();
+  const leftHanded = useSettingsStore((state) => state.leftHanded);
+  useKeyboard({
+    undo,
+    redo,
+    hint: showHint,
+    newDeal: () => initGame(suitCount, isRelaxed),
+    stock: dealCards,
+  });
 
   useEffect(() => {
-    initGame(1, false, dealSeed);
-  }, [initGame, dealSeed]);
+    initGame(options.suits ?? 1, options.relaxed ?? false, dealSeed);
+  }, [initGame, dealSeed, options.suits, options.relaxed]);
 
   if (isWon) {
     return <WinScreen
@@ -61,6 +84,7 @@ export default function SpiderBoard() {
     <CardTable<SpiderLocation, SpiderTarget>
       onDrop={onDrop}
       style={tableStyle}
+      hint={hint}
     >
       {/* Controls */}
       <div className="flex justify-between items-center">
@@ -94,23 +118,24 @@ export default function SpiderBoard() {
             </div>
           )}
         </div>
-        <button
-          onClick={undo}
-          disabled={history.length === 0}
-          className="flex items-center gap-2 px-3 py-1.5 sm:px-4 sm:py-2 bg-slate-800 text-white rounded-lg hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-xs sm:text-sm"
-        >
-          <Undo2 className="w-3 h-3 sm:w-4 sm:h-4" /> Undo
-        </button>
+        <HintButton onClick={showHint} />
+        <UndoRedo
+          canUndo={history.length > 0}
+          canRedo={future.length > 0}
+          onUndo={undo}
+          onRedo={redo}
+        />
       </div>
 
       {/* Top Row: Stock and Completed Sets */}
-      <div className="flex justify-between items-start">
+      <div className={cn('flex justify-between items-start', leftHanded && 'flex-row-reverse')}>
         {/* Stock */}
         <div className="flex gap-2">
           <div
             className={cn(
               'w-12 h-18 sm:w-16 sm:h-24 md:w-20 md:h-28 lg:w-24 lg:h-36 rounded-lg sm:rounded-xl border-2 border-white/20 bg-black/20 relative',
-              stock.length > 0 ? 'cursor-pointer hover:border-white/40' : 'opacity-50'
+              stock.length > 0 ? 'cursor-pointer hover:border-white/40' : 'opacity-50',
+              stockHinted && 'ring-4 ring-sky-400 ring-inset'
             )}
             onClick={dealCards}
           >
@@ -175,19 +200,18 @@ export default function SpiderBoard() {
                 canDrag={card.isFaceUp && isValidSpiderSequence(col.slice(j))}
                 dealDelay={dealDelayOf(card.id)}
                 style={{ top: j * fanFor(col.length), zIndex: j }}
-                onClick={
-                  card.isFaceUp
-                    ? (e) => {
-                        e.stopPropagation();
-                        autoMoveCard({ type: 'tableau', index: i, cardIndex: j });
-                      }
-                    : undefined
-                }
+                {...(card.isFaceUp
+                  ? onMove((e) => {
+                      e.stopPropagation();
+                      autoMoveCard({ type: 'tableau', index: i, cardIndex: j });
+                    })
+                  : {})}
               />
             ))}
           </DroppableArea>
         ))}
       </div>
+      {stuck && <NoMoves onUndo={undo} onNewDeal={() => initGame(suitCount, isRelaxed)} />}
     </CardTable>
   );
 }

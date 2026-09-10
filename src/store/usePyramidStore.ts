@@ -1,4 +1,6 @@
 import { create } from 'zustand';
+import { freshTimeline, played, stepBack, stepForward } from './history';
+import { Hint, pyramidHints } from '../lib/solitaire/hints';
 import { Card, createDeck, faceUp, shuffleDeck } from '../lib/cards';
 import { mulberry32, randomSeed } from '../lib/rng';
 import { isCardExposed } from '../lib/solitaire/pyramid';
@@ -28,12 +30,23 @@ interface PyramidState {
    * Only initGame resets it.
    */
   xpAwarded: boolean;
+  /** Undo, redo and the move count. */
   history: GameStateSnapshot[];
+  future: GameStateSnapshot[];
+  moves: number;
   
   initGame: (seed?: number) => void;
   drawCard: () => void;
   handleCardClick: (card: Card, location: PyramidLocation) => void;
   undo: () => void;
+  /** Walk forward into a move that was undone. */
+  redo: () => void;
+  /**
+   * Every move available right now, best first. Empty means the game is
+   * stuck, which is worth telling the player rather than leaving them to
+   * discover it.
+   */
+  hints: () => Hint[];
   checkWin: () => void;
 }
 
@@ -51,7 +64,7 @@ export const usePyramidStore = create<PyramidState>((set, get) => ({
   isWon: false,
   xpAwarded: false,
   seed: 0,
-  history: [],
+  ...freshTimeline<GameStateSnapshot>(),
 
   initGame: (seed = randomSeed()) => {
     let deck = createDeck(1);
@@ -72,7 +85,7 @@ export const usePyramidStore = create<PyramidState>((set, get) => ({
       isWon: false,
       xpAwarded: false,
       seed,
-      history: [],
+      ...freshTimeline<GameStateSnapshot>(),
     });
   },
 
@@ -89,7 +102,7 @@ export const usePyramidStore = create<PyramidState>((set, get) => ({
         stock: newStock,
         waste: [],
         selectedCard: null,
-        history: [...state.history, snapshot]
+        ...played(state, snapshot)
       });
     } else {
       const newStock = [...state.stock];
@@ -106,7 +119,7 @@ export const usePyramidStore = create<PyramidState>((set, get) => ({
         stock: newStock,
         waste: newWaste,
         selectedCard: newSelected,
-        history: [...state.history, snapshot]
+        ...played(state, snapshot)
       });
     }
   },
@@ -136,7 +149,7 @@ export const usePyramidStore = create<PyramidState>((set, get) => ({
         pyramid: newPyramid,
         waste: newWaste,
         selectedCard: newSelected,
-        history: [...state.history, snapshot]
+        ...played(state, snapshot)
       });
       get().checkWin();
       return;
@@ -173,7 +186,7 @@ export const usePyramidStore = create<PyramidState>((set, get) => ({
         pyramid: newPyramid,
         waste: newWaste,
         selectedCard: null,
-        history: [...state.history, snapshot]
+        ...played(state, snapshot)
       });
       get().checkWin();
       return;
@@ -184,18 +197,30 @@ export const usePyramidStore = create<PyramidState>((set, get) => ({
   },
 
   undo: () => set((state) => {
-    if (state.history.length === 0) return state;
-    
-    const newHistory = [...state.history];
-    const previousState = newHistory.pop()!;
-    
+    const step = stepBack<GameStateSnapshot>(state, cloneState(state));
+    if (!step) return state;
+    const { restored, ...timeline } = step;
     return {
-      ...previousState,
+      ...restored,
+      ...timeline,
       selectedCard: null,
-      history: newHistory,
       isWon: false,
     };
   }),
+
+  redo: () => set((state) => {
+    const step = stepForward<GameStateSnapshot>(state, cloneState(state));
+    if (!step) return state;
+    const { restored, ...timeline } = step;
+    return {
+      ...restored,
+      ...timeline,
+      selectedCard: null,
+      isWon: false,
+    };
+  }),
+
+  hints: () => pyramidHints(get()),
 
   checkWin: () => {
     const state = get();

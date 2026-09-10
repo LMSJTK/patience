@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CORNER_DEPTH } from '../cardGeometry';
+import { cornerDepth } from '../cardGeometry';
 import { computeTableMetrics } from './useTableMetrics';
 
 /** The shapes the six games actually use. */
@@ -25,16 +25,20 @@ const VIEWPORTS = [
 describe('a covered card always shows its rank and pip', () => {
   // This is the bug that prompted the rule: a column of five was fanned as
   // tightly as a column of nineteen, so only the bottom card could be read.
-  for (const shape of SHAPES) {
-    for (const viewport of VIEWPORTS) {
-      it(`${shape.name} on ${viewport.name}`, () => {
-        const m = computeTableMetrics(shape, viewport);
-        const cornerDepth = m.cardWidth * CORNER_DEPTH;
+  // Large print is checked too, because it makes the rank taller than the
+  // loose fan allows for and a short column takes the loose fan directly.
+  for (const largePrint of [false, true]) {
+    for (const shape of SHAPES) {
+      for (const viewport of VIEWPORTS) {
+        it(`${shape.name} on ${viewport.name}${largePrint ? ', large print' : ''}`, () => {
+          const m = computeTableMetrics(shape, viewport, largePrint);
+          const corner = m.cardWidth * cornerDepth(largePrint);
 
-        for (let cards = 2; cards <= 24; cards++) {
-          expect(m.fanFor(cards)).toBeGreaterThanOrEqual(cornerDepth);
-        }
-      });
+          for (let cards = 2; cards <= 24; cards++) {
+            expect(m.fanFor(cards)).toBeGreaterThanOrEqual(corner);
+          }
+        });
+      }
     }
   }
 });
