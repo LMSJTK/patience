@@ -26,6 +26,8 @@ export { UndoRedo } from './UndoRedo';
 export type { UndoRedoProps } from './UndoRedo';
 export { useAutoComplete } from './useAutoComplete';
 export type { AutoComplete, AutoCompletable } from './useAutoComplete';
+export { useDealOptions, useDailyChallenge } from './useDealOptions';
+export type { DealOptions } from './useDealOptions';
 export { useDealSeed } from './useDealSeed';
 export { useGameSounds } from './useGameSounds';
 export type { SoundableStore } from './useGameSounds';

@@ -15,6 +15,7 @@ import {
   NoMoves,
   useHint,
   useKeyboard,
+  useDealOptions,
   useDealSeed,
   useGameSounds,
   useTableMetrics,
@@ -53,6 +54,7 @@ export default function KlondikeBoard() {
   const { cardHeight, cardSpacing, fanFor, style: tableStyle } = useTableMetrics(SHAPE);
 
   const dealSeed = useDealSeed();
+  const options = useDealOptions();
   const { onDrop, dealDelayOf } = useGameSounds(useKlondikeStore, handleDrop);
   const { shown: hint, next: showHint, stuck } = useHint(useKlondikeStore, moves, isWon);
   const stockHinted = hint?.target === 'stock';
@@ -66,8 +68,8 @@ export default function KlondikeBoard() {
   const { finishing, start: startFinishing } = useAutoComplete(useKlondikeStore, seed);
 
   useEffect(() => {
-    initGame(1, dealSeed);
-  }, [initGame, dealSeed]);
+    initGame(options.draw ?? 1, dealSeed);
+  }, [initGame, dealSeed, options.draw]);
 
   if (isWon) {
     return <WinScreen

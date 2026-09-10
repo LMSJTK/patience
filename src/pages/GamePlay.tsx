@@ -7,6 +7,9 @@ import { db } from '../lib/firebase';
 import { collection, addDoc, doc, getDoc, setDoc } from 'firebase/firestore';
 import { checkAndAwardAchievements } from '../lib/achievements';
 import { formatTime, useSessionStore } from '../store/useSessionStore';
+import { useDailyStore } from '../store/useDailyStore';
+import { DAILY_XP, Difficulty } from '../lib/daily';
+import { useSearchParams } from 'react-router-dom';
 import KlondikeBoard from '../components/game/KlondikeBoard';
 import FreecellBoard from '../components/game/FreecellBoard';
 import SpiderBoard from '../components/game/SpiderBoard';
@@ -23,6 +26,10 @@ import { useMissMilliganStore } from '../store/useMissMilliganStore';
 
 export default function GamePlay() {
   const { gameId } = useParams<{ gameId: GameType }>();
+  const [searchParams] = useSearchParams();
+  // Set when this game was opened from a daily challenge card, so winning it
+  // counts towards the streak rather than being an ordinary game.
+  const dailyChallenge = searchParams.get('daily');
   const { user, profile } = useAuthStore();
   const updateStats = useGameStore(state => state.updateStats);
   const stats = useGameStore(state => state.stats);
@@ -111,8 +118,9 @@ export default function GamePlay() {
   const handleWin = async (finalTime: number) => {
     if (!gameId) return;
     
-    // Determine difficulty (simplified for now, could be passed from stores)
-    let difficulty: 'easy' | 'medium' | 'hard' = 'medium';
+    // The game's own settings decide the tier a time is recorded under, so a
+    // draw-three win is never filed next to a draw-one one.
+    let difficulty: Difficulty = 'medium';
     if (gameId === 'spider') {
       const suitCount = useSpiderStore.getState().suitCount;
       difficulty = suitCount === 1 ? 'easy' : suitCount === 2 ? 'medium' : 'hard';
@@ -136,6 +144,13 @@ export default function GamePlay() {
       // which is what the isNewBest test above reads it as too.
       previousBest: currentBest || null,
     });
+
+    // A daily challenge pays out once, the first time it is won.
+    if (dailyChallenge && !useDailyStore.getState().isComplete(dailyChallenge)) {
+      useDailyStore.getState().complete(dailyChallenge);
+      const tier = dailyChallenge.split(':')[2] as Difficulty;
+      if (DAILY_XP[tier]) useGameStore.getState().addXp(gameId, DAILY_XP[tier]);
+    }
 
     if (isNewBest) {
       updateStats(gameId, {

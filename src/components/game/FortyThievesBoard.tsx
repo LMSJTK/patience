@@ -14,6 +14,7 @@ import {
   NoMoves,
   useHint,
   useKeyboard,
+  useDealOptions,
   useDealSeed,
   useGameSounds,
   useTableMetrics,
@@ -51,6 +52,7 @@ export default function FortyThievesBoard() {
   const { cardHeight, fanFor, style: tableStyle } = useTableMetrics(SHAPE);
 
   const dealSeed = useDealSeed();
+  const options = useDealOptions();
   const { onDrop, dealDelayOf } = useGameSounds(useFortyThievesStore, handleDrop);
   const { shown: hint, next: showHint, stuck } = useHint(useFortyThievesStore, moves, isWon);
   const stockHinted = hint?.target === 'stock';
@@ -63,8 +65,8 @@ export default function FortyThievesBoard() {
   });
 
   useEffect(() => {
-    initGame(false, dealSeed);
-  }, [initGame, dealSeed]);
+    initGame(options.josephine ?? false, dealSeed);
+  }, [initGame, dealSeed, options.josephine]);
 
   // The destination is unknown while a card is in the air, so allow the most
   // permissive limit here: the one for moving onto an occupied column.

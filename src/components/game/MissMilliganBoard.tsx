@@ -14,6 +14,7 @@ import {
   NoMoves,
   useHint,
   useKeyboard,
+  useDealOptions,
   useDealSeed,
   useGameSounds,
   useTableMetrics,
@@ -51,6 +52,7 @@ export default function MissMilliganBoard() {
   const { cardHeight, fanFor, style: tableStyle } = useTableMetrics(SHAPE);
 
   const dealSeed = useDealSeed();
+  const options = useDealOptions();
   const { onDrop, dealDelayOf } = useGameSounds(useMissMilliganStore, handleDrop);
   const { shown: hint, next: showHint, stuck } = useHint(useMissMilliganStore, moves, isWon);
   const stockHinted = hint?.target === 'stock';
@@ -63,8 +65,8 @@ export default function MissMilliganBoard() {
   });
 
   useEffect(() => {
-    initGame(false, dealSeed);
-  }, [initGame, dealSeed]);
+    initGame(options.tabby ?? false, dealSeed);
+  }, [initGame, dealSeed, options.tabby]);
 
   if (isWon) {
     return <WinScreen

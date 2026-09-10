@@ -1,5 +1,6 @@
 import { db } from './firebase';
 import { doc, setDoc, getDoc, collection, addDoc } from 'firebase/firestore';
+import { useDailyStore } from '../store/useDailyStore';
 
 export interface Achievement {
   id: string;
@@ -13,7 +14,7 @@ export const ACHIEVEMENTS: Achievement[] = [
   { id: 'speed_demon', name: 'Speed Demon', description: 'Win a game in under 2 minutes.', icon: '⚡' },
   { id: 'klondike_master', name: 'Klondike Master', description: 'Reach level 5 in Klondike.', icon: '♠️' },
   { id: 'spider_master', name: 'Spider Master', description: 'Reach level 5 in Spider.', icon: '🕷️' },
-  { id: 'daily_streak', name: 'Daily Streak', description: 'Complete 3 daily challenges.', icon: '🔥' },
+  { id: 'daily_streak', name: 'Daily Streak', description: 'Complete a daily challenge three days running.', icon: '🔥' },
 ];
 
 export const checkAndAwardAchievements = async (
@@ -45,7 +46,11 @@ export const checkAndAwardAchievements = async (
         case 'spider_master':
           if (stats['spider']?.level >= 5) earned = true;
           break;
-        // Add more logic for other achievements
+        case 'daily_streak':
+          // Three days running, which is what the description has always
+          // promised and there was previously no counter to check.
+          if (useDailyStore.getState().streak() >= 3) earned = true;
+          break;
       }
       
       if (earned) {

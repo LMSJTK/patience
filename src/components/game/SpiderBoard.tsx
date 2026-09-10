@@ -14,6 +14,7 @@ import {
   NoMoves,
   useHint,
   useKeyboard,
+  useDealOptions,
   useDealSeed,
   useGameSounds,
   useTableMetrics,
@@ -51,6 +52,7 @@ export default function SpiderBoard() {
   const { cardHeight, fanFor, style: tableStyle } = useTableMetrics(SHAPE);
 
   const dealSeed = useDealSeed();
+  const options = useDealOptions();
   const { onDrop, dealDelayOf } = useGameSounds(useSpiderStore, handleDrop);
   const { shown: hint, next: showHint, stuck } = useHint(useSpiderStore, moves, isWon);
   const stockHinted = hint?.target === 'stock';
@@ -63,8 +65,8 @@ export default function SpiderBoard() {
   });
 
   useEffect(() => {
-    initGame(1, false, dealSeed);
-  }, [initGame, dealSeed]);
+    initGame(options.suits ?? 1, options.relaxed ?? false, dealSeed);
+  }, [initGame, dealSeed, options.suits, options.relaxed]);
 
   if (isWon) {
     return <WinScreen
