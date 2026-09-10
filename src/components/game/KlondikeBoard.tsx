@@ -1,4 +1,5 @@
 import { Settings } from 'lucide-react';
+import { useSettingsStore } from '../../store/useSettingsStore';
 import { cn } from '../../lib/utils';
 import { useEffect, useState } from 'react';
 import { CardLocation, useKlondikeStore } from '../../store/useKlondikeStore';
@@ -15,6 +16,7 @@ import {
   NoMoves,
   useHint,
   useKeyboard,
+  useMoveClick,
   useDealOptions,
   useDealSeed,
   useGameSounds,
@@ -58,6 +60,8 @@ export default function KlondikeBoard() {
   const { onDrop, dealDelayOf } = useGameSounds(useKlondikeStore, handleDrop);
   const { shown: hint, next: showHint, stuck } = useHint(useKlondikeStore, moves, isWon);
   const stockHinted = hint?.target === 'stock';
+  const onMove = useMoveClick();
+  const leftHanded = useSettingsStore((state) => state.leftHanded);
   useKeyboard({
     undo,
     redo,
@@ -122,7 +126,7 @@ export default function KlondikeBoard() {
       </div>
 
       {/* Top Row: Stock, Waste, Foundations */}
-      <div className="flex justify-between gap-2">
+      <div className={cn('flex justify-between gap-2', leftHanded && 'flex-row-reverse')}>
         <div className="flex gap-2 sm:gap-4">
           {/* Stock */}
           <div
@@ -149,7 +153,7 @@ export default function KlondikeBoard() {
                     location={{ type: 'waste' } as CardLocation}
                     cardsToDrag={[card]}
                     style={{ left: offset }}
-                    onClick={() => selectCard({ type: 'waste' })}
+                    {...onMove(() => selectCard({ type: 'waste' }))}
                   />
                 );
               }
@@ -167,7 +171,7 @@ export default function KlondikeBoard() {
               data={{ type: 'foundation', index: i } as KlondikeTarget}
               style={slot}
               className="rounded-xl border-2 border-white/20 bg-black/20 relative"
-              onClick={() => selectCard({ type: 'foundation', index: i })}
+              {...onMove(() => selectCard({ type: 'foundation', index: i }))}
             >
               {col.map((card) => (
                 <PlayingCard key={card.id} card={card} className="absolute inset-0 pointer-events-none" />
@@ -205,14 +209,12 @@ export default function KlondikeBoard() {
                 cardsToDrag={col.slice(j)}
                 dealDelay={dealDelayOf(card.id)}
                 style={{ top: j * fanFor(col.length), zIndex: j }}
-                onClick={
-                  card.isFaceUp
-                    ? (e) => {
-                        e.stopPropagation();
-                        selectCard({ type: 'tableau', index: i, cardIndex: j });
-                      }
-                    : undefined
-                }
+                {...(card.isFaceUp
+                  ? onMove((e) => {
+                      e.stopPropagation();
+                      selectCard({ type: 'tableau', index: i, cardIndex: j });
+                    })
+                  : {})}
               />
             ))}
           </DroppableArea>

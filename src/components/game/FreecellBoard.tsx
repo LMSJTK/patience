@@ -1,4 +1,6 @@
 import { useEffect } from 'react';
+import { cn } from '../../lib/utils';
+import { useSettingsStore } from '../../store/useSettingsStore';
 import { isValidSequence } from '../../lib/solitaire/freecell';
 import { FreecellLocation, useFreecellStore } from '../../store/useFreecellStore';
 import PlayingCard from './PlayingCard';
@@ -14,6 +16,7 @@ import {
   NoMoves,
   useHint,
   useKeyboard,
+  useMoveClick,
   useDealSeed,
   useGameSounds,
   useTableMetrics,
@@ -50,6 +53,8 @@ export default function FreecellBoard() {
   const dealSeed = useDealSeed();
   const { onDrop, dealDelayOf } = useGameSounds(useFreecellStore, handleDrop);
   const { shown: hint, next: showHint, stuck } = useHint(useFreecellStore, moves, isWon);
+  const onMove = useMoveClick();
+  const leftHanded = useSettingsStore((state) => state.leftHanded);
   useKeyboard({
     undo,
     redo,
@@ -87,7 +92,7 @@ export default function FreecellBoard() {
       </div>
 
       {/* Top Row: Free Cells and Foundations */}
-      <div className="flex justify-between items-start gap-2 sm:gap-8">
+      <div className={cn('flex justify-between items-start gap-2 sm:gap-8', leftHanded && 'flex-row-reverse')}>
         {/* Free Cells */}
         <div className="flex gap-1 sm:gap-2 md:gap-4">
           {freeCells.map((card, i) => (
@@ -97,9 +102,9 @@ export default function FreecellBoard() {
               data={{ type: 'freecell', index: i } as FreecellTarget}
               style={slot}
               className="rounded-xl border-2 border-white/20 bg-black/20 relative"
-              onClick={() => {
+              {...onMove(() => {
                 if (card) autoMoveCard({ type: 'freecell', index: i });
-              }}
+              })}
             >
               {card && (
                 <DraggableCard
@@ -122,9 +127,9 @@ export default function FreecellBoard() {
               data={{ type: 'foundation', index: i } as FreecellTarget}
               style={slot}
               className="rounded-xl border-2 border-white/20 bg-black/20 relative"
-              onClick={() => {
+              {...onMove(() => {
                 if (col.length > 0) autoMoveCard({ type: 'foundation', index: i });
-              }}
+              })}
             >
               {col.map((card) => (
                 <PlayingCard key={card.id} card={card} className="absolute inset-0 pointer-events-none" />
@@ -153,10 +158,10 @@ export default function FreecellBoard() {
                 canDrag={isValidSequence(col.slice(j))}
                 dealDelay={dealDelayOf(card.id)}
                 style={{ top: j * fanFor(col.length), zIndex: j }}
-                onClick={(e) => {
+                {...onMove((e) => {
                   e.stopPropagation();
                   autoMoveCard({ type: 'tableau', index: i, cardIndex: j });
-                }}
+                })}
               />
             ))}
           </DroppableArea>

@@ -1,4 +1,5 @@
 import { Settings } from 'lucide-react';
+import { useSettingsStore } from '../../store/useSettingsStore';
 import { useEffect, useState } from 'react';
 import { cn } from '../../lib/utils';
 import { getMaxMoveCount, isValidFortyThievesSequence } from '../../lib/solitaire/fortythieves';
@@ -14,6 +15,7 @@ import {
   NoMoves,
   useHint,
   useKeyboard,
+  useMoveClick,
   useDealOptions,
   useDealSeed,
   useGameSounds,
@@ -56,6 +58,8 @@ export default function FortyThievesBoard() {
   const { onDrop, dealDelayOf } = useGameSounds(useFortyThievesStore, handleDrop);
   const { shown: hint, next: showHint, stuck } = useHint(useFortyThievesStore, moves, isWon);
   const stockHinted = hint?.target === 'stock';
+  const onMove = useMoveClick();
+  const leftHanded = useSettingsStore((state) => state.leftHanded);
   useKeyboard({
     undo,
     redo,
@@ -122,7 +126,7 @@ export default function FortyThievesBoard() {
       </div>
 
       {/* Top Row: Stock, Waste, and Foundations */}
-      <div className="flex justify-between items-start gap-2 sm:gap-8">
+      <div className={cn('flex justify-between items-start gap-2 sm:gap-8', leftHanded && 'flex-row-reverse')}>
         <div className="flex gap-2 sm:gap-4">
           {/* Stock */}
           <div className="flex flex-col items-center gap-1 sm:gap-2">
@@ -153,7 +157,7 @@ export default function FortyThievesBoard() {
                   location={{ type: 'waste' } as FortyThievesLocation}
                   cardsToDrag={[card]}
                   className="absolute inset-0"
-                  onClick={() => autoMoveCard({ type: 'waste' })}
+                  {...onMove(() => autoMoveCard({ type: 'waste' }))}
                 />
               ) : (
                 <PlayingCard key={card.id} card={card} className="absolute inset-0 pointer-events-none" />
@@ -171,9 +175,9 @@ export default function FortyThievesBoard() {
               data={{ type: 'foundation', index: i } as FortyThievesTarget}
               style={{ width: 'calc(var(--card-w) * 0.84)', height: 'calc(var(--card-h) * 0.84)' }}
               className="rounded-lg border-2 border-white/20 bg-black/20 relative"
-              onClick={() => {
+              {...onMove(() => {
                 if (col.length > 0) autoMoveCard({ type: 'foundation', index: i });
-              }}
+              })}
             >
               {col.map((card) => (
                 <PlayingCard key={card.id} card={card} className="absolute inset-0 pointer-events-none" />
@@ -204,10 +208,10 @@ export default function FortyThievesBoard() {
                   canDrag={isValidFortyThievesSequence(run) && run.length <= maxMove}
                   dealDelay={dealDelayOf(card.id)}
                   style={{ top: j * fanFor(col.length), zIndex: j }}
-                  onClick={(e) => {
+                  {...onMove((e) => {
                     e.stopPropagation();
                     autoMoveCard({ type: 'tableau', index: i, cardIndex: j });
-                  }}
+                  })}
                 />
               );
             })}

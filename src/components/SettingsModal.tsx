@@ -16,8 +16,15 @@ interface SettingsModalProps {
 export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   const { cardBack, customCardBacks, setCardBack, addCustomCardBack } = useGameStore();
   const { user } = useAuthStore();
-  const { geminiApiKey, setGeminiApiKey, soundEnabled, setSoundEnabled, soundVolume, setSoundVolume } =
-    useSettingsStore();
+  const {
+    geminiApiKey, setGeminiApiKey,
+    soundEnabled, setSoundEnabled,
+    soundVolume, setSoundVolume,
+    animationSpeed, setAnimationSpeed,
+    clickToMove, setClickToMove,
+    leftHanded, setLeftHanded,
+    largePrint, setLargePrint,
+  } = useSettingsStore();
   const [prompt, setPrompt] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [generateError, setGenerateError] = useState<string | null>(null);
@@ -120,6 +127,83 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
         </div>
         
         <div className="p-6 overflow-y-auto flex-1 space-y-8">
+
+          <section>
+            <h3 className="text-lg font-medium text-white mb-4">Play</h3>
+
+            <div className="space-y-5">
+              <div>
+                <span className="mb-2 block text-sm text-slate-400">Animation speed</span>
+                <div className="flex gap-2">
+                  {(['normal', 'quick', 'instant'] as const).map((speed) => (
+                    <button
+                      key={speed}
+                      onClick={() => setAnimationSpeed(speed)}
+                      className={
+                        'rounded-lg px-3 py-1.5 text-sm capitalize transition-colors ' +
+                        (animationSpeed === speed
+                          ? 'bg-indigo-600 text-white'
+                          : 'bg-slate-700 text-slate-300 hover:bg-slate-600')
+                      }
+                    >
+                      {speed}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <span className="mb-2 block text-sm text-slate-400">To play a card</span>
+                <div className="flex gap-2">
+                  {(['single', 'double'] as const).map((mode) => (
+                    <button
+                      key={mode}
+                      onClick={() => setClickToMove(mode)}
+                      className={
+                        'rounded-lg px-3 py-1.5 text-sm transition-colors ' +
+                        (clickToMove === mode
+                          ? 'bg-indigo-600 text-white'
+                          : 'bg-slate-700 text-slate-300 hover:bg-slate-600')
+                      }
+                    >
+                      {mode === 'single' ? 'Click it' : 'Double-click it'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <label className="flex cursor-pointer items-start gap-3 text-white">
+                <input
+                  type="checkbox"
+                  checked={leftHanded}
+                  onChange={(e) => setLeftHanded(e.target.checked)}
+                  className="mt-1 h-4 w-4 rounded border-slate-600 bg-slate-700 accent-indigo-500"
+                />
+                <span>
+                  Left-handed layout
+                  <span className="block text-sm text-slate-400">
+                    Puts the foundations and the stock on the other side.
+                  </span>
+                </span>
+              </label>
+
+              <label className="flex cursor-pointer items-start gap-3 text-white">
+                <input
+                  type="checkbox"
+                  checked={largePrint}
+                  onChange={(e) => setLargePrint(e.target.checked)}
+                  className="mt-1 h-4 w-4 rounded border-slate-600 bg-slate-700 accent-indigo-500"
+                />
+                <span>
+                  Large print
+                  <span className="block text-sm text-slate-400">
+                    A bigger rank and suit, for reading the board from further away.
+                    Columns fan wider to suit.
+                  </span>
+                </span>
+              </label>
+            </div>
+          </section>
 
           <section>
             <h3 className="text-lg font-medium text-white mb-4">Sound</h3>

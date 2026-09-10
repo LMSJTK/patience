@@ -18,6 +18,8 @@ export type { HintButtonProps } from './HintButton';
 export { NoMoves } from './NoMoves';
 export type { NoMovesProps } from './NoMoves';
 export { useHint } from './useHint';
+export { useMoveClick } from './useMoveClick';
+export type { MoveClickProps } from './useMoveClick';
 export { useKeyboard } from './useKeyboard';
 export type { Shortcuts } from './useKeyboard';
 export type { Hints } from './useHint';

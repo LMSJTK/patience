@@ -17,6 +17,7 @@ export interface DroppableAreaProps<T> {
   style?: React.CSSProperties;
   children?: React.ReactNode;
   onClick?: (e: React.MouseEvent) => void;
+  onDoubleClick?: (e: React.MouseEvent) => void;
 }
 
 /**
@@ -34,6 +35,7 @@ export function DroppableArea<T>({
   style,
   children,
   onClick,
+  onDoubleClick,
 }: DroppableAreaProps<T>) {
   const { setNodeRef, isOver } = useDroppable({
     id,
@@ -51,6 +53,7 @@ export function DroppableArea<T>({
       )}
       style={style}
       onClick={onClick}
+      onDoubleClick={onDoubleClick}
     >
       {children}
     </div>

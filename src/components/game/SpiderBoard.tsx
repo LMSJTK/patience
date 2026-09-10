@@ -1,4 +1,5 @@
 import { Settings } from 'lucide-react';
+import { useSettingsStore } from '../../store/useSettingsStore';
 import { useEffect, useState } from 'react';
 import { cn } from '../../lib/utils';
 import { isValidSpiderSequence } from '../../lib/solitaire/spider';
@@ -14,6 +15,7 @@ import {
   NoMoves,
   useHint,
   useKeyboard,
+  useMoveClick,
   useDealOptions,
   useDealSeed,
   useGameSounds,
@@ -56,6 +58,8 @@ export default function SpiderBoard() {
   const { onDrop, dealDelayOf } = useGameSounds(useSpiderStore, handleDrop);
   const { shown: hint, next: showHint, stuck } = useHint(useSpiderStore, moves, isWon);
   const stockHinted = hint?.target === 'stock';
+  const onMove = useMoveClick();
+  const leftHanded = useSettingsStore((state) => state.leftHanded);
   useKeyboard({
     undo,
     redo,
@@ -124,7 +128,7 @@ export default function SpiderBoard() {
       </div>
 
       {/* Top Row: Stock and Completed Sets */}
-      <div className="flex justify-between items-start">
+      <div className={cn('flex justify-between items-start', leftHanded && 'flex-row-reverse')}>
         {/* Stock */}
         <div className="flex gap-2">
           <div
@@ -196,14 +200,12 @@ export default function SpiderBoard() {
                 canDrag={card.isFaceUp && isValidSpiderSequence(col.slice(j))}
                 dealDelay={dealDelayOf(card.id)}
                 style={{ top: j * fanFor(col.length), zIndex: j }}
-                onClick={
-                  card.isFaceUp
-                    ? (e) => {
-                        e.stopPropagation();
-                        autoMoveCard({ type: 'tableau', index: i, cardIndex: j });
-                      }
-                    : undefined
-                }
+                {...(card.isFaceUp
+                  ? onMove((e) => {
+                      e.stopPropagation();
+                      autoMoveCard({ type: 'tableau', index: i, cardIndex: j });
+                    })
+                  : {})}
               />
             ))}
           </DroppableArea>

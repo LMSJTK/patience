@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { CARD_RATIO, CORNER_DEPTH_OF_HEIGHT } from '../cardGeometry';
+import { CARD_RATIO, cornerDepthOfHeight } from '../cardGeometry';
+import { useSettingsStore } from '../../../store/useSettingsStore';
 
 /**
  * Card geometry, derived from the window rather than fixed per breakpoint.
@@ -25,8 +26,11 @@ const FAN_FRACTION = 0.34;
  * The tightest a column may ever be fanned: exactly enough for the rank and
  * pip. A column too deep for even this overflows and the board scrolls, which
  * is better than cards that cannot be told apart.
+ *
+ * Large print makes the rank taller, so the floor rises with it. A fan tuned
+ * to the ordinary corner would bury a large-print one.
  */
-const MIN_FAN_FRACTION = CORNER_DEPTH_OF_HEIGHT;
+const minFanFraction = (largePrint: boolean) => cornerDepthOfHeight(largePrint);
 
 /**
  * The header, the controls row and the gaps between rows — everything above
@@ -75,8 +79,10 @@ export interface TableShape {
  */
 export function computeTableMetrics(
   { columns, typicalColumn }: TableShape,
-  viewport?: { width: number; height: number }
+  viewport?: { width: number; height: number },
+  largePrint = false
 ): TableMetrics {
+  const MIN_FAN_FRACTION = minFanFraction(largePrint);
   const viewportWidth = viewport?.width ?? (typeof window === 'undefined' ? 1280 : window.innerWidth);
   const viewportHeight = viewport?.height ?? (typeof window === 'undefined' ? 800 : window.innerHeight);
 
@@ -100,8 +106,12 @@ export function computeTableMetrics(
   );
   const height = Math.round(width * CARD_RATIO);
 
-  const loose = Math.round(height * FAN_FRACTION);
   const tightest = Math.ceil(height * MIN_FAN_FRACTION);
+  // Never below the floor. In large print the rank reaches further down the
+  // card than the loose fan allows for, and a short column takes the loose
+  // fan directly — so without this the two- and three-card columns are the
+  // ones that end up unreadable, which is the wrong way round.
+  const loose = Math.max(tightest, Math.round(height * FAN_FRACTION));
 
   // Room under the row of piles for the column itself.
   const columnBudget = viewportHeight - FIXED_CHROME - height - height;
@@ -134,15 +144,19 @@ export function computeTableMetrics(
 }
 
 export function useTableMetrics(shape: TableShape): TableMetrics {
-  const [metrics, setMetrics] = useState<TableMetrics>(() => computeTableMetrics(shape));
+  const largePrint = useSettingsStore((state) => state.largePrint);
+  const [metrics, setMetrics] = useState<TableMetrics>(() =>
+    computeTableMetrics(shape, undefined, largePrint)
+  );
   const { columns, typicalColumn } = shape;
 
   useEffect(() => {
-    const update = () => setMetrics(computeTableMetrics({ columns, typicalColumn }));
+    const update = () =>
+      setMetrics(computeTableMetrics({ columns, typicalColumn }, undefined, largePrint));
     update();
     window.addEventListener('resize', update);
     return () => window.removeEventListener('resize', update);
-  }, [columns, typicalColumn]);
+  }, [columns, typicalColumn, largePrint]);
 
   return metrics;
 }
