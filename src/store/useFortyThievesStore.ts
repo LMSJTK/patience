@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { Card, createDeck, shuffleDeck } from '../lib/cards';
+import { Card, createDeck, faceUp, shuffleDeck } from '../lib/cards';
 import { mulberry32, randomSeed } from '../lib/rng';
 import { canMoveToFoundation, canMoveToTableau, isValidFortyThievesSequence, getMaxMoveCount } from '../lib/solitaire/fortythieves';
 import { useGameStore } from './useGameStore';
@@ -95,9 +95,7 @@ export const useFortyThievesStore = create<FortyThievesState>((set, get) => ({
     const newStock = [...state.stock];
     const newWaste = [...state.waste];
     
-    const card = newStock.pop()!;
-    card.isFaceUp = true;
-    newWaste.push(card);
+    newWaste.push(faceUp(newStock.pop()!));
 
     return {
       stock: newStock,

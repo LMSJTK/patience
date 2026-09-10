@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { Card, createDeck, shuffleDeck } from '../lib/cards';
+import { Card, createDeck, faceUp, shuffleDeck } from '../lib/cards';
 import { mulberry32, randomSeed } from '../lib/rng';
 import { canMoveToFoundation, canMoveToTableau, isValidMissMilliganSequence } from '../lib/solitaire/missmilligan';
 import { useGameStore } from './useGameStore';
@@ -96,9 +96,7 @@ export const useMissMilliganStore = create<MissMilliganState>((set, get) => ({
     // Deal 1 card to each of the 8 columns, or as many as we have left
     for (let i = 0; i < 8; i++) {
       if (newStock.length > 0) {
-        const card = newStock.pop()!;
-        card.isFaceUp = true;
-        newTableau[i].push(card);
+        newTableau[i].push(faceUp(newStock.pop()!));
       }
     }
 

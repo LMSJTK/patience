@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { Card, createDeck, shuffleDeck } from '../lib/cards';
+import { Card, createDeck, faceUp, shuffleDeck } from '../lib/cards';
 import { mulberry32, randomSeed } from '../lib/rng';
 import { isCardExposed } from '../lib/solitaire/pyramid';
 import { useGameStore } from './useGameStore';
@@ -94,9 +94,7 @@ export const usePyramidStore = create<PyramidState>((set, get) => ({
     } else {
       const newStock = [...state.stock];
       const newWaste = [...state.waste];
-      const card = newStock.pop()!;
-      card.isFaceUp = true;
-      newWaste.push(card);
+      newWaste.push(faceUp(newStock.pop()!));
       
       // If the selected card was in the waste, deselect it since it's covered now
       let newSelected = state.selectedCard;

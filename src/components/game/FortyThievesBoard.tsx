@@ -36,6 +36,7 @@ export default function FortyThievesBoard() {
     handleDrop,
     undo,
     history,
+    seed,
   } = useFortyThievesStore();
 
   const [showSettings, setShowSettings] = useState(false);
@@ -56,7 +57,11 @@ export default function FortyThievesBoard() {
   const maxMove = isJosephine ? Infinity : getMaxMoveCount(emptyTableauCols, false);
 
   if (isWon) {
-    return <WinScreen xp={200} onPlayAgain={() => initGame(isJosephine)} />;
+    return <WinScreen
+        xp={200}
+        onNewDeal={() => initGame(isJosephine)}
+        onReplay={() => initGame(isJosephine, seed)}
+      />;
   }
 
   return (

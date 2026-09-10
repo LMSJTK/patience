@@ -15,7 +15,7 @@ const SHAPE = { columns: 4, typicalColumn: 7 };
 export default function PyramidBoard() {
   const { 
     stock, waste, pyramid, selectedCard, isWon,
-    initGame, drawCard, handleCardClick, undo, history
+    initGame, drawCard, handleCardClick, undo, history, seed
   } = usePyramidStore();
 
   const dealSeed = useDealSeed();
@@ -34,7 +34,7 @@ export default function PyramidBoard() {
   if (isWon) {
     // initGame takes an optional seed, so it must not be used as a click
     // handler directly: React would pass the event in as the deal number.
-    return <WinScreen xp={100} onPlayAgain={() => initGame()} />;
+    return <WinScreen xp={100} onNewDeal={() => initGame()} onReplay={() => initGame(seed)} />;
   }
 
   return (
