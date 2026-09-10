@@ -1,4 +1,4 @@
-import { Settings, Undo2 } from 'lucide-react';
+import { Settings } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { cn } from '../../lib/utils';
 import { isValidMissMilliganSequence } from '../../lib/solitaire/missmilligan';
@@ -8,7 +8,12 @@ import {
   CardTable,
   DraggableCard,
   DroppableArea,
+  UndoRedo,
   WinScreen,
+  HintButton,
+  NoMoves,
+  useHint,
+  useKeyboard,
   useDealSeed,
   useGameSounds,
   useTableMetrics,
@@ -35,7 +40,10 @@ export default function MissMilliganBoard() {
     isWon,
     handleDrop,
     undo,
+    redo,
     history,
+    future,
+    moves,
     seed,
   } = useMissMilliganStore();
 
@@ -44,6 +52,15 @@ export default function MissMilliganBoard() {
 
   const dealSeed = useDealSeed();
   const { onDrop, dealDelayOf } = useGameSounds(useMissMilliganStore, handleDrop);
+  const { shown: hint, next: showHint, stuck } = useHint(useMissMilliganStore, moves, isWon);
+  const stockHinted = hint?.target === 'stock';
+  useKeyboard({
+    undo,
+    redo,
+    hint: showHint,
+    newDeal: () => initGame(isTabbyCat),
+    stock: dealCards,
+  });
 
   useEffect(() => {
     initGame(false, dealSeed);
@@ -61,6 +78,7 @@ export default function MissMilliganBoard() {
     <CardTable<MissMilliganLocation, MissMilliganTarget>
       onDrop={onDrop}
       style={tableStyle}
+      hint={hint}
     >
       {/* Controls */}
       <div className="flex justify-between items-center">
@@ -85,13 +103,13 @@ export default function MissMilliganBoard() {
             </div>
           )}
         </div>
-        <button
-          onClick={undo}
-          disabled={history.length === 0}
-          className="flex items-center gap-2 px-3 py-1.5 sm:px-4 sm:py-2 bg-slate-800 text-white rounded-lg hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-xs sm:text-sm"
-        >
-          <Undo2 className="w-3 h-3 sm:w-4 sm:h-4" /> Undo
-        </button>
+        <HintButton onClick={showHint} />
+        <UndoRedo
+          canUndo={history.length > 0}
+          canRedo={future.length > 0}
+          onUndo={undo}
+          onRedo={redo}
+        />
       </div>
 
       {/* Top Row: Stock, Pocket, and Foundations */}
@@ -102,7 +120,8 @@ export default function MissMilliganBoard() {
             <div
               className={cn(
                 'relative rounded-xl border-2 border-white/20 bg-black/20',
-                stock.length > 0 ? 'cursor-pointer hover:border-white/40' : 'opacity-50'
+                stock.length > 0 ? 'cursor-pointer hover:border-white/40' : 'opacity-50',
+                stockHinted && 'ring-4 ring-sky-400 ring-inset'
               )}
               onClick={dealCards}
             >
@@ -207,6 +226,7 @@ export default function MissMilliganBoard() {
           </DroppableArea>
         ))}
       </div>
+      {stuck && <NoMoves onUndo={undo} onNewDeal={() => initGame(isTabbyCat)} />}
     </CardTable>
   );
 }

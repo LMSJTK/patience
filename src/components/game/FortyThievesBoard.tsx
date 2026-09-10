@@ -1,4 +1,4 @@
-import { Settings, Undo2 } from 'lucide-react';
+import { Settings } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { cn } from '../../lib/utils';
 import { getMaxMoveCount, isValidFortyThievesSequence } from '../../lib/solitaire/fortythieves';
@@ -8,7 +8,12 @@ import {
   CardTable,
   DraggableCard,
   DroppableArea,
+  UndoRedo,
   WinScreen,
+  HintButton,
+  NoMoves,
+  useHint,
+  useKeyboard,
   useDealSeed,
   useGameSounds,
   useTableMetrics,
@@ -35,7 +40,10 @@ export default function FortyThievesBoard() {
     isWon,
     handleDrop,
     undo,
+    redo,
     history,
+    future,
+    moves,
     seed,
   } = useFortyThievesStore();
 
@@ -44,6 +52,15 @@ export default function FortyThievesBoard() {
 
   const dealSeed = useDealSeed();
   const { onDrop, dealDelayOf } = useGameSounds(useFortyThievesStore, handleDrop);
+  const { shown: hint, next: showHint, stuck } = useHint(useFortyThievesStore, moves, isWon);
+  const stockHinted = hint?.target === 'stock';
+  useKeyboard({
+    undo,
+    redo,
+    hint: showHint,
+    newDeal: () => initGame(isJosephine),
+    stock: drawCard,
+  });
 
   useEffect(() => {
     initGame(false, dealSeed);
@@ -68,6 +85,7 @@ export default function FortyThievesBoard() {
     <CardTable<FortyThievesLocation, FortyThievesTarget>
       onDrop={onDrop}
       style={tableStyle}
+      hint={hint}
     >
       {/* Controls */}
       <div className="flex justify-between items-center">
@@ -92,13 +110,13 @@ export default function FortyThievesBoard() {
             </div>
           )}
         </div>
-        <button
-          onClick={undo}
-          disabled={history.length === 0}
-          className="flex items-center gap-2 px-3 py-1.5 sm:px-4 sm:py-2 bg-slate-800 text-white rounded-lg hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-xs sm:text-sm"
-        >
-          <Undo2 className="w-3 h-3 sm:w-4 sm:h-4" /> Undo
-        </button>
+        <HintButton onClick={showHint} />
+        <UndoRedo
+          canUndo={history.length > 0}
+          canRedo={future.length > 0}
+          onUndo={undo}
+          onRedo={redo}
+        />
       </div>
 
       {/* Top Row: Stock, Waste, and Foundations */}
@@ -109,7 +127,8 @@ export default function FortyThievesBoard() {
             <div
               className={cn(
                 'relative rounded-xl border-2 border-white/20 bg-black/20',
-                stock.length > 0 ? 'cursor-pointer hover:border-white/40' : 'opacity-50'
+                stock.length > 0 ? 'cursor-pointer hover:border-white/40' : 'opacity-50',
+                stockHinted && 'ring-4 ring-sky-400 ring-inset'
               )}
               onClick={drawCard}
             >
@@ -193,6 +212,7 @@ export default function FortyThievesBoard() {
           </DroppableArea>
         ))}
       </div>
+      {stuck && <NoMoves onUndo={undo} onNewDeal={() => initGame(isJosephine)} />}
     </CardTable>
   );
 }

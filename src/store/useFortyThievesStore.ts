@@ -1,4 +1,6 @@
 import { create } from 'zustand';
+import { freshTimeline, played, stepBack, stepForward } from './history';
+import { Hint, fortyThievesHints } from '../lib/solitaire/hints';
 import { Card, createDeck, faceUp, shuffleDeck } from '../lib/cards';
 import { mulberry32, randomSeed } from '../lib/rng';
 import { canMoveToFoundation, canMoveToTableau, isValidFortyThievesSequence, getMaxMoveCount } from '../lib/solitaire/fortythieves';
@@ -31,13 +33,24 @@ interface FortyThievesState {
    * Only initGame resets it.
    */
   xpAwarded: boolean;
+  /** Undo, redo and the move count. */
   history: GameStateSnapshot[];
+  future: GameStateSnapshot[];
+  moves: number;
   
   initGame: (isJosephine?: boolean, seed?: number) => void;
   drawCard: () => void;
   handleDrop: (from: FortyThievesLocation, to: { type: 'tableau' | 'foundation', index: number }) => void;
   autoMoveCard: (location: FortyThievesLocation) => void;
   undo: () => void;
+  /** Walk forward into a move that was undone. */
+  redo: () => void;
+  /**
+   * Every move available right now, best first. Empty means the game is
+   * stuck, which is worth telling the player rather than leaving them to
+   * discover it.
+   */
+  hints: () => Hint[];
   checkWin: () => void;
 }
 
@@ -57,7 +70,7 @@ export const useFortyThievesStore = create<FortyThievesState>((set, get) => ({
   isWon: false,
   xpAwarded: false,
   seed: 0,
-  history: [],
+  ...freshTimeline<GameStateSnapshot>(),
 
   initGame: (isJosephine = false, seed = randomSeed()) => {
     // 2 decks
@@ -84,7 +97,7 @@ export const useFortyThievesStore = create<FortyThievesState>((set, get) => ({
       isWon: false,
       xpAwarded: false,
       seed,
-      history: [],
+      ...freshTimeline<GameStateSnapshot>(),
     });
   },
 
@@ -100,7 +113,7 @@ export const useFortyThievesStore = create<FortyThievesState>((set, get) => ({
     return {
       stock: newStock,
       waste: newWaste,
-      history: [...state.history, snapshot],
+      ...played(state, snapshot),
     };
   }),
 
@@ -232,7 +245,7 @@ export const useFortyThievesStore = create<FortyThievesState>((set, get) => ({
           waste: newWaste,
           tableau: newTableau,
           foundations: newFoundations,
-          history: [...state.history, snapshot],
+          ...played(state, snapshot),
         };
       }
 
@@ -243,17 +256,28 @@ export const useFortyThievesStore = create<FortyThievesState>((set, get) => ({
   },
 
   undo: () => set((state) => {
-    if (state.history.length === 0) return state;
-    
-    const newHistory = [...state.history];
-    const previousState = newHistory.pop()!;
-    
+    const step = stepBack<GameStateSnapshot>(state, cloneState(state));
+    if (!step) return state;
+    const { restored, ...timeline } = step;
     return {
-      ...previousState,
-      history: newHistory,
+      ...restored,
+      ...timeline,
       isWon: false,
     };
   }),
+
+  redo: () => set((state) => {
+    const step = stepForward<GameStateSnapshot>(state, cloneState(state));
+    if (!step) return state;
+    const { restored, ...timeline } = step;
+    return {
+      ...restored,
+      ...timeline,
+      isWon: false,
+    };
+  }),
+
+  hints: () => fortyThievesHints(get()),
 
   checkWin: () => {
     const state = get();

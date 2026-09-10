@@ -1,4 +1,6 @@
 import { create } from 'zustand';
+import { freshTimeline, played, stepBack, stepForward } from './history';
+import { Hint, missMilliganHints } from '../lib/solitaire/hints';
 import { Card, createDeck, faceUp, shuffleDeck } from '../lib/cards';
 import { mulberry32, randomSeed } from '../lib/rng';
 import { canMoveToFoundation, canMoveToTableau, isValidMissMilliganSequence } from '../lib/solitaire/missmilligan';
@@ -31,13 +33,24 @@ interface MissMilliganState {
    * Only initGame resets it.
    */
   xpAwarded: boolean;
+  /** Undo, redo and the move count. */
   history: GameStateSnapshot[];
+  future: GameStateSnapshot[];
+  moves: number;
   
   initGame: (isTabbyCat?: boolean, seed?: number) => void;
   dealCards: () => void;
   handleDrop: (from: MissMilliganLocation, to: { type: 'tableau' | 'foundation' | 'pocket', index?: number }) => void;
   autoMoveCard: (location: MissMilliganLocation) => void;
   undo: () => void;
+  /** Walk forward into a move that was undone. */
+  redo: () => void;
+  /**
+   * Every move available right now, best first. Empty means the game is
+   * stuck, which is worth telling the player rather than leaving them to
+   * discover it.
+   */
+  hints: () => Hint[];
   checkWin: () => void;
 }
 
@@ -57,7 +70,7 @@ export const useMissMilliganStore = create<MissMilliganState>((set, get) => ({
   isWon: false,
   xpAwarded: false,
   seed: 0,
-  history: [],
+  ...freshTimeline<GameStateSnapshot>(),
 
   initGame: (isTabbyCat = false, seed = randomSeed()) => {
     // 2 decks
@@ -82,7 +95,7 @@ export const useMissMilliganStore = create<MissMilliganState>((set, get) => ({
       isWon: false,
       xpAwarded: false,
       seed,
-      history: [],
+      ...freshTimeline<GameStateSnapshot>(),
     });
   },
 
@@ -103,7 +116,7 @@ export const useMissMilliganStore = create<MissMilliganState>((set, get) => ({
     return {
       stock: newStock,
       tableau: newTableau,
-      history: [...state.history, snapshot],
+      ...played(state, snapshot),
     };
   }),
 
@@ -254,7 +267,7 @@ export const useMissMilliganStore = create<MissMilliganState>((set, get) => ({
           tableau: newTableau,
           foundations: newFoundations,
           pocket: newPocket,
-          history: [...state.history, snapshot],
+          ...played(state, snapshot),
         };
       }
 
@@ -265,17 +278,28 @@ export const useMissMilliganStore = create<MissMilliganState>((set, get) => ({
   },
 
   undo: () => set((state) => {
-    if (state.history.length === 0) return state;
-    
-    const newHistory = [...state.history];
-    const previousState = newHistory.pop()!;
-    
+    const step = stepBack<GameStateSnapshot>(state, cloneState(state));
+    if (!step) return state;
+    const { restored, ...timeline } = step;
     return {
-      ...previousState,
-      history: newHistory,
+      ...restored,
+      ...timeline,
       isWon: false,
     };
   }),
+
+  redo: () => set((state) => {
+    const step = stepForward<GameStateSnapshot>(state, cloneState(state));
+    if (!step) return state;
+    const { restored, ...timeline } = step;
+    return {
+      ...restored,
+      ...timeline,
+      isWon: false,
+    };
+  }),
+
+  hints: () => missMilliganHints(get()),
 
   checkWin: () => {
     const state = get();

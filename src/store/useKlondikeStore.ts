@@ -1,4 +1,6 @@
 import { create } from 'zustand';
+import { freshTimeline, played, stepBack, stepForward } from './history';
+import { Hint, klondikeHints } from '../lib/solitaire/hints';
 import { Card, createDeck, revealTop, shuffleDeck } from '../lib/cards';
 import { mulberry32, randomSeed } from '../lib/rng';
 import { canMoveToFoundation, canMoveToTableau } from '../lib/solitaire/klondike';
@@ -33,7 +35,10 @@ interface KlondikeState {
    * Only initGame resets it.
    */
   xpAwarded: boolean;
+  /** Undo, redo and the move count. */
   history: GameStateSnapshot[];
+  future: GameStateSnapshot[];
+  moves: number;
   
   initGame: (drawCount: 1 | 3, seed?: number) => void;
   drawCard: () => void;
@@ -41,6 +46,14 @@ interface KlondikeState {
   handleDrop: (from: CardLocation, to: { type: 'tableau' | 'foundation', index: number }) => void;
   autoMoveCard: (location: CardLocation) => void;
   undo: () => void;
+  /** Walk forward into a move that was undone. */
+  redo: () => void;
+  /**
+   * Every move available right now, best first. Empty means the game is
+   * stuck, which is worth telling the player rather than leaving them to
+   * discover it.
+   */
+  hints: () => Hint[];
   checkWin: () => void;
   /** True when pressing Finish would actually finish the game. */
   canAutoComplete: () => boolean;
@@ -65,7 +78,7 @@ export const useKlondikeStore = create<KlondikeState>((set, get) => ({
   isWon: false,
   xpAwarded: false,
   seed: 0,
-  history: [],
+  ...freshTimeline<GameStateSnapshot>(),
 
   initGame: (drawCount, seed = randomSeed()) => {
     const deck = shuffleDeck(createDeck(), mulberry32(seed));
@@ -90,7 +103,7 @@ export const useKlondikeStore = create<KlondikeState>((set, get) => ({
       isWon: false,
       xpAwarded: false,
       seed,
-      history: [],
+      ...freshTimeline<GameStateSnapshot>(),
     });
   },
 
@@ -100,7 +113,7 @@ export const useKlondikeStore = create<KlondikeState>((set, get) => ({
     if (state.stock.length === 0) {
       if (state.waste.length === 0) return state;
       const newStock = [...state.waste].reverse().map(c => ({ ...c, isFaceUp: false }));
-      return { stock: newStock, waste: [], selectedLocation: null, history: [...state.history, snapshot] };
+      return { stock: newStock, waste: [], selectedLocation: null, ...played(state, snapshot) };
     }
 
     const drawAmount = Math.min(state.drawCount, state.stock.length);
@@ -110,7 +123,7 @@ export const useKlondikeStore = create<KlondikeState>((set, get) => ({
       stock: state.stock.slice(0, -drawAmount),
       waste: [...state.waste, ...drawnCards],
       selectedLocation: null,
-      history: [...state.history, snapshot],
+      ...played(state, snapshot),
     };
   }),
 
@@ -230,7 +243,7 @@ export const useKlondikeStore = create<KlondikeState>((set, get) => ({
           tableau: newTableau,
           foundations: newFoundations,
           selectedLocation: null,
-          history: [...state.history, snapshot],
+          ...played(state, snapshot),
         };
       }
 
@@ -241,14 +254,24 @@ export const useKlondikeStore = create<KlondikeState>((set, get) => ({
   },
 
   undo: () => set((state) => {
-    if (state.history.length === 0) return state;
-    
-    const newHistory = [...state.history];
-    const previousState = newHistory.pop()!;
-    
+    const step = stepBack<GameStateSnapshot>(state, cloneState(state));
+    if (!step) return state;
+    const { restored, ...timeline } = step;
     return {
-      ...previousState,
-      history: newHistory,
+      ...restored,
+      ...timeline,
+      selectedLocation: null,
+      isWon: false,
+    };
+  }),
+
+  redo: () => set((state) => {
+    const step = stepForward<GameStateSnapshot>(state, cloneState(state));
+    if (!step) return state;
+    const { restored, ...timeline } = step;
+    return {
+      ...restored,
+      ...timeline,
       selectedLocation: null,
       isWon: false,
     };
@@ -293,6 +316,8 @@ export const useKlondikeStore = create<KlondikeState>((set, get) => ({
     }
     return true;
   },
+
+  hints: () => klondikeHints(get()),
 
   checkWin: () => {
     const state = get();

@@ -5,6 +5,7 @@ import { cn } from '../../lib/utils';
 import { motion, useReducedMotion } from 'motion/react';
 import { useGameStore } from '../../store/useGameStore';
 import { Heart, Diamond, Club, Spade } from 'lucide-react';
+import { useIsHinted } from './table/hintContext';
 
 /**
  * motion.div redefines the drag and animation handlers with its own
@@ -115,6 +116,9 @@ const PlayingCardInner = forwardRef<HTMLDivElement, PlayingCardProps>(
     // Subscribed to the one field this needs. Reading the whole store meant a
     // card re-rendered whenever anything in it changed, XP included.
     const cardBack = useGameStore((state) => state.cardBack);
+    // Context, not a prop: a hint has to reach cards scattered across a board
+    // that knows nothing about hints.
+    const hinted = useIsHinted(card.id);
     const reduceMotion = useReducedMotion();
     const transition = reduceMotion ? NO_MOTION : MOVE_TRANSITION;
 
@@ -145,6 +149,7 @@ const PlayingCardInner = forwardRef<HTMLDivElement, PlayingCardProps>(
         {...(card.isFaceUp ? { 'data-rank': card.rank, 'data-suit': card.suit } : {})}
         className={cn(
           'relative shadow-md cursor-pointer',
+          hinted && 'ring-2 sm:ring-4 ring-sky-400 ring-offset-1 sm:ring-offset-2 ring-offset-green-900 z-40',
           isSelected && 'ring-2 sm:ring-4 ring-yellow-400 ring-offset-1 sm:ring-offset-2 ring-offset-green-900 z-50',
           className
         )}

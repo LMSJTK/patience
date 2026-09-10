@@ -1,4 +1,6 @@
 import { create } from 'zustand';
+import { freshTimeline, played, stepBack, stepForward } from './history';
+import { Hint, freecellHints } from '../lib/solitaire/hints';
 import { Card, createDeck, shuffleDeck } from '../lib/cards';
 import { mulberry32, randomSeed } from '../lib/rng';
 import { canMoveToFoundation, canMoveToTableau, isValidSequence, getMaxMoveCount } from '../lib/solitaire/freecell';
@@ -29,12 +31,23 @@ interface FreecellState {
    * Only initGame resets it.
    */
   xpAwarded: boolean;
+  /** Undo, redo and the move count. */
   history: GameStateSnapshot[];
+  future: GameStateSnapshot[];
+  moves: number;
   
   initGame: (seed?: number) => void;
   handleDrop: (from: FreecellLocation, to: { type: 'tableau' | 'foundation' | 'freecell', index: number }) => void;
   autoMoveCard: (location: FreecellLocation) => void;
   undo: () => void;
+  /** Walk forward into a move that was undone. */
+  redo: () => void;
+  /**
+   * Every move available right now, best first. Empty means the game is
+   * stuck, which is worth telling the player rather than leaving them to
+   * discover it.
+   */
+  hints: () => Hint[];
   checkWin: () => void;
   /** True when pressing Finish would actually finish the game. */
   canAutoComplete: () => boolean;
@@ -55,7 +68,7 @@ export const useFreecellStore = create<FreecellState>((set, get) => ({
   isWon: false,
   xpAwarded: false,
   seed: 0,
-  history: [],
+  ...freshTimeline<GameStateSnapshot>(),
 
   initGame: (seed = randomSeed()) => {
     const deck = shuffleDeck(createDeck(), mulberry32(seed)).map(c => ({ ...c, isFaceUp: true }));
@@ -76,7 +89,7 @@ export const useFreecellStore = create<FreecellState>((set, get) => ({
       isWon: false,
       xpAwarded: false,
       seed,
-      history: [],
+      ...freshTimeline<GameStateSnapshot>(),
     });
   },
 
@@ -217,7 +230,7 @@ export const useFreecellStore = create<FreecellState>((set, get) => ({
           freeCells: newFreeCells,
           tableau: newTableau,
           foundations: newFoundations,
-          history: [...state.history, snapshot],
+          ...played(state, snapshot),
         };
       }
 
@@ -228,17 +241,28 @@ export const useFreecellStore = create<FreecellState>((set, get) => ({
   },
 
   undo: () => set((state) => {
-    if (state.history.length === 0) return state;
-    
-    const newHistory = [...state.history];
-    const previousState = newHistory.pop()!;
-    
+    const step = stepBack<GameStateSnapshot>(state, cloneState(state));
+    if (!step) return state;
+    const { restored, ...timeline } = step;
     return {
-      ...previousState,
-      history: newHistory,
+      ...restored,
+      ...timeline,
       isWon: false,
     };
   }),
+
+  redo: () => set((state) => {
+    const step = stepForward<GameStateSnapshot>(state, cloneState(state));
+    if (!step) return state;
+    const { restored, ...timeline } = step;
+    return {
+      ...restored,
+      ...timeline,
+      isWon: false,
+    };
+  }),
+
+  hints: () => freecellHints(get()),
 
   checkWin: () => {
     const state = get();

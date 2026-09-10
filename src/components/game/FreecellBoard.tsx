@@ -1,4 +1,3 @@
-import { Undo2 } from 'lucide-react';
 import { useEffect } from 'react';
 import { isValidSequence } from '../../lib/solitaire/freecell';
 import { FreecellLocation, useFreecellStore } from '../../store/useFreecellStore';
@@ -7,9 +6,14 @@ import {
   CardTable,
   DraggableCard,
   DroppableArea,
+  UndoRedo,
   FinishButton,
   WinScreen,
   useAutoComplete,
+  HintButton,
+  NoMoves,
+  useHint,
+  useKeyboard,
   useDealSeed,
   useGameSounds,
   useTableMetrics,
@@ -33,7 +37,10 @@ export default function FreecellBoard() {
     isWon,
     handleDrop,
     undo,
+    redo,
     history,
+    future,
+    moves,
     canAutoComplete,
     seed,
   } = useFreecellStore();
@@ -42,6 +49,13 @@ export default function FreecellBoard() {
 
   const dealSeed = useDealSeed();
   const { onDrop, dealDelayOf } = useGameSounds(useFreecellStore, handleDrop);
+  const { shown: hint, next: showHint, stuck } = useHint(useFreecellStore, moves, isWon);
+  useKeyboard({
+    undo,
+    redo,
+    hint: showHint,
+    newDeal: () => initGame(),
+  });
   const { finishing, start: startFinishing } = useAutoComplete(useFreecellStore, seed);
 
   useEffect(() => {
@@ -58,17 +72,18 @@ export default function FreecellBoard() {
     <CardTable<FreecellLocation, FreecellTarget>
       onDrop={onDrop}
       style={tableStyle}
+      hint={hint}
     >
       {/* Controls */}
       <div className="flex justify-end gap-2 sm:gap-4">
         {canFinish && <FinishButton finishing={finishing} onClick={startFinishing} />}
-        <button
-          onClick={undo}
-          disabled={history.length === 0}
-          className="flex items-center gap-2 px-3 py-1.5 sm:px-4 sm:py-2 bg-slate-800 text-white rounded-lg hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-xs sm:text-sm"
-        >
-          <Undo2 className="w-3 h-3 sm:w-4 sm:h-4" /> Undo
-        </button>
+        <HintButton onClick={showHint} />
+        <UndoRedo
+          canUndo={history.length > 0}
+          canRedo={future.length > 0}
+          onUndo={undo}
+          onRedo={redo}
+        />
       </div>
 
       {/* Top Row: Free Cells and Foundations */}
@@ -147,6 +162,7 @@ export default function FreecellBoard() {
           </DroppableArea>
         ))}
       </div>
+      {stuck && <NoMoves onUndo={undo} onNewDeal={() => initGame()} />}
     </CardTable>
   );
 }

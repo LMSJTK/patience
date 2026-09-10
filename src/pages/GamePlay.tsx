@@ -31,7 +31,7 @@ export default function GamePlay() {
   const [isPlaying, setIsPlaying] = useState(false);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
-  const [gameState, setGameState] = useState({ isWon: false, historyLength: 0, seed: 0 });
+  const [gameState, setGameState] = useState({ isWon: false, moves: 0, seed: 0 });
 
   useEffect(() => {
     const stores = {
@@ -57,7 +57,7 @@ export default function GamePlay() {
     // Initial state
     setGameState({
       isWon: store.getState().isWon,
-      historyLength: store.getState().history.length,
+      moves: store.getState().moves,
       seed: store.getState().seed,
     });
 
@@ -65,7 +65,7 @@ export default function GamePlay() {
     const unsubscribe = store.subscribe((state: any) => {
       setGameState({
         isWon: state.isWon,
-        historyLength: state.history.length,
+        moves: state.moves,
         seed: state.seed,
       });
     });
@@ -74,14 +74,14 @@ export default function GamePlay() {
   }, [gameId]);
 
   useEffect(() => {
-    if (gameState.historyLength > 0 && !gameState.isWon && !isPlaying) {
+    if (gameState.moves > 0 && !gameState.isWon && !isPlaying) {
       setIsPlaying(true);
-    } else if (gameState.historyLength === 0) {
+    } else if (gameState.moves === 0) {
       setIsPlaying(false);
       setTime(0);
       useSessionStore.getState().startNewGame();
     }
-  }, [gameState.historyLength, gameState.isWon]);
+  }, [gameState.moves, gameState.isWon]);
 
   useEffect(() => {
     if (isPlaying && !gameState.isWon) {
@@ -131,7 +131,7 @@ export default function GamePlay() {
     // here rather than letting it read the value this win is about to replace.
     useSessionStore.getState().recordWin({
       seconds: finalTime,
-      moves: gameState.historyLength,
+      moves: gameState.moves,
       // A high score of zero is how this store spells "never won this one",
       // which is what the isNewBest test above reads it as too.
       previousBest: currentBest || null,
@@ -189,7 +189,7 @@ export default function GamePlay() {
           <span className="text-green-300/70 font-mono text-sm hidden sm:inline" title="Deal number">
             #{gameState.seed}
           </span>
-          <span className="text-green-200">Moves: {gameState.historyLength}</span>
+          <span className="text-green-200">Moves: {gameState.moves}</span>
           <span className="text-green-200 font-mono text-lg">Time: {formatTime(time)}</span>
         </div>
       </header>
