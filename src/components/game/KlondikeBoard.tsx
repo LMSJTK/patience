@@ -14,8 +14,8 @@ import {
 
 type KlondikeTarget = { type: 'tableau' | 'foundation'; index: number };
 
-/** Seven columns, and a column can reach about nineteen cards in a long game. */
-const SHAPE = { columns: 7, deepestColumn: 19 };
+/** Seven columns; nine cards is a working depth, and deeper ones fan tighter. */
+const SHAPE = { columns: 7, typicalColumn: 9 };
 
 /** Every pile is one card's worth of space. */
 const slot = { width: 'var(--card-w)', height: 'var(--card-h)' };
@@ -37,7 +37,7 @@ export default function KlondikeBoard() {
 
   const [showSettings, setShowSettings] = useState(false);
   const [finishing, setFinishing] = useState(false);
-  const { cardSpacing, cardHeight, style: tableStyle } = useTableMetrics(SHAPE);
+  const { cardHeight, cardSpacing, fanFor, style: tableStyle } = useTableMetrics(SHAPE);
 
   const dealSeed = useDealSeed();
   const { onDrop, dealDelayOf } = useGameSounds(useKlondikeStore, handleDrop);
@@ -178,7 +178,7 @@ export default function KlondikeBoard() {
             className="rounded-xl border-2 border-white/10 bg-black/10 relative transition-all"
             style={{
               width: 'var(--card-w)',
-              height: col.length > 0 ? (col.length - 1) * cardSpacing + cardHeight : cardHeight,
+              height: col.length > 0 ? (col.length - 1) * fanFor(col.length) + cardHeight : cardHeight,
             }}
             onClick={() => {
               if (col.length === 0) selectCard({ type: 'tableau', index: i, cardIndex: 0 });
@@ -193,7 +193,7 @@ export default function KlondikeBoard() {
                     location={{ type: 'tableau', index: i, cardIndex: j } as CardLocation}
                     cardsToDrag={col.slice(j)}
                     dealDelay={dealDelayOf(card.id)}
-                style={{ top: j * cardSpacing, zIndex: j }}
+                    style={{ top: j * fanFor(col.length), zIndex: j }}
                     onClick={(e) => {
                       e.stopPropagation();
                       selectCard({ type: 'tableau', index: i, cardIndex: j });
@@ -207,7 +207,7 @@ export default function KlondikeBoard() {
                   card={card}
                   className="absolute w-full"
                   dealDelay={dealDelayOf(card.id)}
-                style={{ top: j * cardSpacing, zIndex: j }}
+                  style={{ top: j * fanFor(col.length), zIndex: j }}
                 />
               );
             })}

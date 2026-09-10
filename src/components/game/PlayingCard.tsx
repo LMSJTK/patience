@@ -1,5 +1,6 @@
 import React, { forwardRef, memo } from 'react';
 import { Card as CardType } from '../../lib/cards';
+import * as geometry from './cardGeometry';
 import { cn } from '../../lib/utils';
 import { motion, useReducedMotion } from 'motion/react';
 import { useGameStore } from '../../store/useGameStore';
@@ -77,18 +78,24 @@ const H = 'var(--card-h, 144px)';
 const cardSize: React.CSSProperties = {
   width: W,
   height: H,
-  borderRadius: `calc(${W} * 0.09)`,
+  borderRadius: `calc(${W} * ${geometry.CARD_RADIUS})`,
 };
 /** Rank and suit in the corners. */
 const corner: React.CSSProperties = {
-  fontSize: `calc(${W} * 0.19)`,
+  fontSize: `calc(${W} * ${geometry.RANK_SIZE})`,
   width: `calc(${W} * 0.2)`,
-  gap: `calc(${W} * 0.02)`,
+  gap: `calc(${W} * ${geometry.RANK_PIP_GAP})`,
 };
-const cornerPip = { width: `calc(${W} * 0.13)`, height: `calc(${W} * 0.13)` };
+const cornerPip = {
+  width: `calc(${W} * ${geometry.CORNER_PIP})`,
+  height: `calc(${W} * ${geometry.CORNER_PIP})`,
+};
 /** The big watermark suit behind the face. */
-const centrePip = { width: `calc(${W} * 0.5)`, height: `calc(${W} * 0.5)` };
-const facePadding = { padding: `calc(${W} * 0.06)` };
+const centrePip = {
+  width: `calc(${W} * ${geometry.CENTRE_PIP})`,
+  height: `calc(${W} * ${geometry.CENTRE_PIP})`,
+};
+const facePadding = { padding: `calc(${W} * ${geometry.FACE_PADDING})` };
 
 const PlayingCardInner = forwardRef<HTMLDivElement, PlayingCardProps>(
   ({ card, className, style, isSelected, dealDelay, ...props }, ref) => {
@@ -128,7 +135,7 @@ const PlayingCardInner = forwardRef<HTMLDivElement, PlayingCardProps>(
           {...props}
         >
           {cardBack === 'default' ? (
-            <div style={{ inset: `calc(${W} * 0.07)` }} className="absolute border-2 border-white/20 rounded-lg opacity-50 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI4IiBoZWlnaHQ9IjgiPgo8cmVjdCB3aWR0aD0iOCIgaGVpZ2h0PSI4IiBmaWxsPSIjZmZmIiBmaWxsLW9wYWNpdHk9IjAuMSI+PC9yZWN0Pgo8cGF0aCBkPSJNMCAwTDggOFpNOCAwTDAgOFoiIHN0cm9rZT0iI2ZmZiIgc3Ryb2tlLW9wYWNpdHk9IjAuMSIgc3Ryb2tlLXdpZHRoPSIxIj48L3BhdGg+Cjwvc3ZnPg==')] bg-repeat" />
+            <div style={{ inset: `calc(${W} * ${geometry.BACK_INSET})` }} className="absolute border-2 border-white/20 rounded-lg opacity-50 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI4IiBoZWlnaHQ9IjgiPgo8cmVjdCB3aWR0aD0iOCIgaGVpZ2h0PSI4IiBmaWxsPSIjZmZmIiBmaWxsLW9wYWNpdHk9IjAuMSI+PC9yZWN0Pgo8cGF0aCBkPSJNMCAwTDggOFpNOCAwTDAgOFoiIHN0cm9rZT0iI2ZmZiIgc3Ryb2tlLW9wYWNpdHk9IjAuMSIgc3Ryb2tlLXdpZHRoPSIxIj48L3BhdGg+Cjwvc3ZnPg==')] bg-repeat" />
           ) : (
             <img src={cardBack} alt="Card back" className="w-full h-full object-cover pointer-events-none" />
           )}

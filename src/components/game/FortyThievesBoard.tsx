@@ -16,8 +16,8 @@ import {
 
 type FortyThievesTarget = { type: 'tableau' | 'foundation'; index: number };
 
-/** Ten columns of two decks. */
-const SHAPE = { columns: 10, deepestColumn: 14 };
+/** Ten columns of two decks, starting four deep. */
+const SHAPE = { columns: 10, typicalColumn: 8 };
 
 /** Every pile is one card's worth of space. */
 const slot = { width: 'var(--card-w)', height: 'var(--card-h)' };
@@ -39,7 +39,7 @@ export default function FortyThievesBoard() {
   } = useFortyThievesStore();
 
   const [showSettings, setShowSettings] = useState(false);
-  const { cardSpacing, cardHeight, style: tableStyle } = useTableMetrics(SHAPE);
+  const { cardHeight, fanFor, style: tableStyle } = useTableMetrics(SHAPE);
 
   const dealSeed = useDealSeed();
   const { onDrop, dealDelayOf } = useGameSounds(useFortyThievesStore, handleDrop);
@@ -165,7 +165,7 @@ export default function FortyThievesBoard() {
             id={`tableau-${i}`}
             data={{ type: 'tableau', index: i } as FortyThievesTarget}
             className="rounded-xl border-2 border-white/10 bg-black/10 relative transition-all"
-            style={{ width: 'var(--card-w)', height: col.length > 0 ? (col.length - 1) * cardSpacing + cardHeight : cardHeight }}
+            style={{ width: 'var(--card-w)', height: col.length > 0 ? (col.length - 1) * fanFor(col.length) + cardHeight : cardHeight }}
           >
             {col.map((card, j) => {
               const run = col.slice(j);
@@ -177,7 +177,7 @@ export default function FortyThievesBoard() {
                   cardsToDrag={run}
                   canDrag={isValidFortyThievesSequence(run) && run.length <= maxMove}
                   dealDelay={dealDelayOf(card.id)}
-                style={{ top: j * cardSpacing, zIndex: j }}
+                  style={{ top: j * fanFor(col.length), zIndex: j }}
                   onClick={(e) => {
                     e.stopPropagation();
                     autoMoveCard({ type: 'tableau', index: i, cardIndex: j });
