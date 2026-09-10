@@ -16,7 +16,7 @@ import {
 type FreecellTarget = { type: 'tableau' | 'foundation' | 'freecell'; index: number };
 
 /** Eight columns, everything face up. */
-const SHAPE = { columns: 8, deepestColumn: 14 };
+const SHAPE = { columns: 8, typicalColumn: 10 };
 
 /** Every pile is one card's worth of space. */
 const slot = { width: 'var(--card-w)', height: 'var(--card-h)' };
@@ -25,7 +25,7 @@ export default function FreecellBoard() {
   const { freeCells, foundations, tableau, initGame, autoMoveCard, isWon, handleDrop, undo, history } =
     useFreecellStore();
 
-  const { cardSpacing, cardHeight, style: tableStyle } = useTableMetrics(SHAPE);
+  const { cardHeight, fanFor, style: tableStyle } = useTableMetrics(SHAPE);
 
   const dealSeed = useDealSeed();
   const { onDrop, dealDelayOf } = useGameSounds(useFreecellStore, handleDrop);
@@ -110,7 +110,7 @@ export default function FreecellBoard() {
             id={`tableau-${i}`}
             data={{ type: 'tableau', index: i } as FreecellTarget}
             className="rounded-xl border-2 border-white/10 bg-black/10 relative transition-all"
-            style={{ width: 'var(--card-w)', height: col.length > 0 ? (col.length - 1) * cardSpacing + cardHeight : cardHeight }}
+            style={{ width: 'var(--card-w)', height: col.length > 0 ? (col.length - 1) * fanFor(col.length) + cardHeight : cardHeight }}
           >
             {col.map((card, j) => (
               <DraggableCard
@@ -120,7 +120,7 @@ export default function FreecellBoard() {
                 cardsToDrag={col.slice(j)}
                 canDrag={isValidSequence(col.slice(j))}
                 dealDelay={dealDelayOf(card.id)}
-                style={{ top: j * cardSpacing, zIndex: j }}
+                style={{ top: j * fanFor(col.length), zIndex: j }}
                 onClick={(e) => {
                   e.stopPropagation();
                   autoMoveCard({ type: 'tableau', index: i, cardIndex: j });

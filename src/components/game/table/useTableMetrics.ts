@@ -1,87 +1,127 @@
 import React, { useEffect, useState } from 'react';
+import { CARD_RATIO, CORNER_DEPTH_OF_HEIGHT } from '../cardGeometry';
 
 /**
  * Card geometry, derived from the window rather than fixed per breakpoint.
  *
- * Cards used to come in four sizes chosen by Tailwind breakpoint, so a 27-inch
- * monitor showed the same 96px cards as a laptop with more empty felt around
- * them. Here the cards are as large as the table can hold: wide enough to fill
- * the row, short enough that the longest column still fits on screen.
+ * Two jobs. Cards are as large as the table can hold, so a big monitor gets
+ * big cards rather than the same cards with more felt around them. And a
+ * fanned column always shows enough of each covered card to read it: the rank
+ * and the pip under it, never a bare sliver.
  */
-
-/** A playing card is half again as tall as it is wide, and so is the art. */
-const CARD_RATIO = 1.5;
 
 /** Below this a card is unreadable; above it the board looks like a toy. */
 const MIN_CARD_WIDTH = 40;
 const MAX_CARD_WIDTH = 132;
 
-/** Fraction of a card's height left showing when cards are fanned down a column. */
-const FAN_FRACTION = 0.26;
+/**
+ * How much of a card shows when a column is fanned loosely, as a fraction of
+ * its height. Comfortably clear of the rank and pip, which reach
+ * CORNER_DEPTH_OF_HEIGHT (about 0.27) down the card.
+ */
+const FAN_FRACTION = 0.34;
 
-/** Tighter than this and the rank in the corner starts to disappear. */
-const MIN_FAN = 13;
+/**
+ * The tightest a column may ever be fanned: exactly enough for the rank and
+ * pip. A column too deep for even this overflows and the board scrolls, which
+ * is better than cards that cannot be told apart.
+ */
+const MIN_FAN_FRACTION = CORNER_DEPTH_OF_HEIGHT;
 
-/** Roughly what the header, the controls row and the top row of piles take. */
-const CHROME_HEIGHT = 240;
+/**
+ * The header, the controls row and the gaps between rows — everything above
+ * the tableau except the row of piles, which is a card tall and counted
+ * separately. Measured from the rendered board rather than estimated.
+ */
+const FIXED_CHROME = 220;
 
 export interface TableMetrics {
   cardWidth: number;
   cardHeight: number;
-  /** Vertical gap between fanned cards in a column. */
+  /** The loose fan, for a column short enough not to need squeezing. */
   cardSpacing: number;
+  /**
+   * The fan for a column of this many cards. Loose by default, tightening
+   * only for a column that would otherwise run off the bottom, and never
+   * below what it takes to read a covered card.
+   */
+  fanFor: (cards: number) => number;
   /** Horizontal gap between columns. */
   columnGap: number;
   /** Exactly the width the columns need, so the table centres rather than stretches. */
   tableWidth: number;
-  /**
-   * Carries the sizes down to every card and pile below, so nothing has to be
-   * passed through by hand.
-   */
+  /** Carries the sizes down to every card and pile below. */
   style: React.CSSProperties;
 }
 
 export interface TableShape {
   /** How many columns sit across the table. */
   columns: number;
-  /** The deepest a column is expected to get, for the height budget. */
-  deepestColumn: number;
+  /**
+   * The column depth to size cards for. A design target, not a hard maximum:
+   * a deeper column fans tighter, and deeper still it scrolls. Setting this to
+   * the theoretical worst case would shrink every card for a board that almost
+   * never happens.
+   */
+  typicalColumn: number;
 }
 
-function measure({ columns, deepestColumn }: TableShape): TableMetrics {
-  const viewportWidth = typeof window === 'undefined' ? 1280 : window.innerWidth;
-  const viewportHeight = typeof window === 'undefined' ? 800 : window.innerHeight;
+/**
+ * Work out the geometry for a given window size.
+ *
+ * Exported so the rule that matters can be tested directly: however deep a
+ * column gets and however small the window, a covered card still shows its
+ * rank and pip.
+ */
+export function computeTableMetrics(
+  { columns, typicalColumn }: TableShape,
+  viewport?: { width: number; height: number }
+): TableMetrics {
+  const viewportWidth = viewport?.width ?? (typeof window === 'undefined' ? 1280 : window.innerWidth);
+  const viewportHeight = viewport?.height ?? (typeof window === 'undefined' ? 800 : window.innerHeight);
 
   const padding = viewportWidth < 640 ? 8 : 28;
   const columnGap = viewportWidth < 640 ? 4 : 12;
 
-  // Cards are as wide as the row allows. Height is not allowed to shrink
-  // them: a long column is handled by fanning tighter, the way a real player
-  // squares up a pile, rather than by making every card smaller.
+  // As wide as the row allows.
   const acrossTheTable = viewportWidth - padding * 2 - columnGap * (columns - 1);
+  const byWidth = acrossTheTable / columns;
+
+  // And short enough that a column of the usual depth fits underneath the row
+  // of piles, which is itself a card tall. Solving
+  //   chrome + cardHeight + cardHeight + (n - 1) * minFan <= viewport
+  // for the height, with the fan at its tightest so cards stay as big as
+  // possible; shorter columns then fan out loosely from there.
+  const perColumn = 2 + MIN_FAN_FRACTION * Math.max(0, typicalColumn - 1);
+  const byHeight = (viewportHeight - FIXED_CHROME) / perColumn / CARD_RATIO;
+
   const width = Math.round(
-    Math.max(MIN_CARD_WIDTH, Math.min(MAX_CARD_WIDTH, acrossTheTable / columns))
+    Math.max(MIN_CARD_WIDTH, Math.min(MAX_CARD_WIDTH, byWidth, byHeight))
   );
   const height = Math.round(width * CARD_RATIO);
 
-  // Fan as generously as the height budget allows, down to the point where the
-  // corner rank would start to be covered.
-  const budget = viewportHeight - CHROME_HEIGHT - height;
-  const perCard = budget / Math.max(1, deepestColumn - 1);
-  const spacing = Math.round(
-    Math.max(MIN_FAN, Math.min(height * FAN_FRACTION, perCard))
-  );
+  const loose = Math.round(height * FAN_FRACTION);
+  const tightest = Math.ceil(height * MIN_FAN_FRACTION);
+
+  // Room under the row of piles for the column itself.
+  const columnBudget = viewportHeight - FIXED_CHROME - height - height;
+  const fanFor = (cards: number): number => {
+    if (cards <= 2) return loose;
+    const toFit = columnBudget / (cards - 1);
+    return Math.round(Math.max(tightest, Math.min(loose, toFit)));
+  };
 
   // Cards stop growing at MAX_CARD_WIDTH, so on a large monitor the row would
   // otherwise be spread across the whole screen with great gulfs between the
-  // columns. Holding the table to the width its columns actually need keeps
-  // the spacing tight and centres the board.
+  // columns. Holding the table to the width its columns need keeps the spacing
+  // tight and centres the board.
   const tableWidth = columns * width + columnGap * (columns - 1);
 
   return {
     cardWidth: width,
     cardHeight: height,
-    cardSpacing: spacing,
+    cardSpacing: loose,
+    fanFor,
     columnGap,
     tableWidth,
     style: {
@@ -93,23 +133,16 @@ function measure({ columns, deepestColumn }: TableShape): TableMetrics {
   };
 }
 
-/**
- * Card geometry for the current window.
- *
- * `deepestColumn` is what the game's longest column can reach, not what it
- * holds right now — sizing to the current board would make every card resize
- * as the game went on.
- */
 export function useTableMetrics(shape: TableShape): TableMetrics {
-  const [metrics, setMetrics] = useState<TableMetrics>(() => measure(shape));
-  const { columns, deepestColumn } = shape;
+  const [metrics, setMetrics] = useState<TableMetrics>(() => computeTableMetrics(shape));
+  const { columns, typicalColumn } = shape;
 
   useEffect(() => {
-    const update = () => setMetrics(measure({ columns, deepestColumn }));
+    const update = () => setMetrics(computeTableMetrics({ columns, typicalColumn }));
     update();
     window.addEventListener('resize', update);
     return () => window.removeEventListener('resize', update);
-  }, [columns, deepestColumn]);
+  }, [columns, typicalColumn]);
 
   return metrics;
 }

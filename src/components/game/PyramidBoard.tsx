@@ -10,7 +10,7 @@ import { WinScreen, useDealSeed, useGameSounds, useTableMetrics } from './table'
  * The pyramid is seven rows deep and its widest row is seven cards, but each
  * sits half over its neighbour, so it needs about four cards' width across.
  */
-const SHAPE = { columns: 4, deepestColumn: 7 };
+const SHAPE = { columns: 4, typicalColumn: 7 };
 
 export default function PyramidBoard() {
   const { 

@@ -17,7 +17,7 @@ import {
 type MissMilliganTarget = { type: 'tableau' | 'foundation' | 'pocket'; index?: number };
 
 /** Eight columns of two decks. */
-const SHAPE = { columns: 8, deepestColumn: 20 };
+const SHAPE = { columns: 8, typicalColumn: 10 };
 
 /** Every pile is one card's worth of space. */
 const slot = { width: 'var(--card-w)', height: 'var(--card-h)' };
@@ -39,7 +39,7 @@ export default function MissMilliganBoard() {
   } = useMissMilliganStore();
 
   const [showSettings, setShowSettings] = useState(false);
-  const { cardSpacing, cardHeight, style: tableStyle } = useTableMetrics(SHAPE);
+  const { cardHeight, fanFor, style: tableStyle } = useTableMetrics(SHAPE);
 
   const dealSeed = useDealSeed();
   const { onDrop, dealDelayOf } = useGameSounds(useMissMilliganStore, handleDrop);
@@ -139,7 +139,7 @@ export default function MissMilliganBoard() {
                       cardsToDrag={pocket.slice(j)}
                       canDrag={isValidMissMilliganSequence(pocket.slice(j))}
                       dealDelay={dealDelayOf(card.id)}
-                style={{ top: j * cardSpacing, zIndex: j }}
+                      style={{ top: j * fanFor(pocket.length), zIndex: j }}
                       onClick={(e) => {
                         e.stopPropagation();
                         autoMoveCard({ type: 'pocket', cardIndex: j });
@@ -182,7 +182,7 @@ export default function MissMilliganBoard() {
             id={`tableau-${i}`}
             data={{ type: 'tableau', index: i } as MissMilliganTarget}
             className="rounded-xl border-2 border-white/10 bg-black/10 relative transition-all"
-            style={{ width: 'var(--card-w)', height: col.length > 0 ? (col.length - 1) * cardSpacing + cardHeight : cardHeight }}
+            style={{ width: 'var(--card-w)', height: col.length > 0 ? (col.length - 1) * fanFor(col.length) + cardHeight : cardHeight }}
           >
             {col.map((card, j) => (
               <DraggableCard
@@ -192,7 +192,7 @@ export default function MissMilliganBoard() {
                 cardsToDrag={col.slice(j)}
                 canDrag={isValidMissMilliganSequence(col.slice(j))}
                 dealDelay={dealDelayOf(card.id)}
-                style={{ top: j * cardSpacing, zIndex: j }}
+                style={{ top: j * fanFor(col.length), zIndex: j }}
                 onClick={(e) => {
                   e.stopPropagation();
                   autoMoveCard({ type: 'tableau', index: i, cardIndex: j });
